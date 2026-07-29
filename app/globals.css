@@ -39,6 +39,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Status colors — reserved for state (pending/busy/free/etc.), kept
+     separate from --primary/--accent so "brand" and "state" never collide. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,73 +54,91 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Taskline brand palette — the single source of truth for color in this
+ * project. Every component consumes these via Tailwind's bg-, text- and
+ * border- utilities (mapped through @theme inline above), never a raw hex
+ * value in component code. To retheme the app, edit only this file.
+ *
+ * Light values below; dark-mode overrides are in `.dark` further down —
+ * next-themes toggles that class on <html> (see components/theme-provider.tsx).
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: #f3f5f8; /* page canvas — cool blue-grey, not pure white */
+  --foreground: #182230; /* primary ink */
+  --card: #ffffff; /* raised surfaces: cards, dialogs, dropdowns */
+  --card-foreground: #182230;
+  --popover: #ffffff;
+  --popover-foreground: #182230;
+  --primary: #2c5f8a; /* brand accent — denim blue */
+  --primary-foreground: #ffffff;
+  --secondary: #eaeef3; /* secondary surface (subtle panels, chips) */
+  --secondary-foreground: #182230;
+  --muted: #eaeef3;
+  --muted-foreground: #5c6b7a;
+  --accent: #e3edf6; /* soft tint of primary — hover/selected backgrounds */
+  --accent-foreground: #1e4766;
+  --destructive: #c1432e; /* also used as the "critical" status color */
+  --success: #1f8a5f;
+  --success-foreground: #ffffff;
+  --warning: #b8770f;
+  --warning-foreground: #ffffff;
+  --border: #dce3ea;
+  --input: #c4cdd8;
+  --ring: #2c5f8a; /* focus ring = brand accent */
+  /* Sequential chart ramp: one hue (primary), light → dark. */
+  --chart-1: #8fc0e4;
+  --chart-2: #6fa8d6;
+  --chart-3: #2c5f8a;
+  --chart-4: #1e4766;
+  --chart-5: #14324a;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #182230;
+  --sidebar-primary: #2c5f8a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3edf6;
+  --sidebar-accent-foreground: #1e4766;
+  --sidebar-border: #dce3ea;
+  --sidebar-ring: #2c5f8a;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0f131a;
+  --foreground: #e6eaef;
+  --card: #161c25;
+  --card-foreground: #e6eaef;
+  --popover: #161c25;
+  --popover-foreground: #e6eaef;
+  --primary: #6fa8d6; /* lighter denim for dark grounds */
+  --primary-foreground: #0e1620;
+  --secondary: #1d2531;
+  --secondary-foreground: #e6eaef;
+  --muted: #1d2531;
+  --muted-foreground: #98a5b3;
+  --accent: #1d3247;
+  --accent-foreground: #8fc0e4;
+  --destructive: #e36b57;
+  --success: #4cbe88;
+  --success-foreground: #0e1620;
+  --warning: #e0a83e;
+  --warning-foreground: #0e1620;
+  --border: #2a3340;
+  --input: #39434f;
+  --ring: #6fa8d6;
+  --chart-1: #8fc0e4;
+  --chart-2: #6fa8d6;
+  --chart-3: #2c5f8a;
+  --chart-4: #1e4766;
+  --chart-5: #14324a;
+  --sidebar: #161c25;
+  --sidebar-foreground: #e6eaef;
+  --sidebar-primary: #6fa8d6;
+  --sidebar-primary-foreground: #0e1620;
+  --sidebar-accent: #1d3247;
+  --sidebar-accent-foreground: #8fc0e4;
+  --sidebar-border: #2a3340;
+  --sidebar-ring: #6fa8d6;
 }
 
 @layer base {

@@ -41,16 +41,22 @@ NextAuth v5 (Credentials).
 ```
 app/                      App Router routes only
   api/auth/[...nextauth]/  NextAuth route handler
+  globals.css               Theme tokens — the ONE place the color palette is defined
 components/
   ui/                      shadcn/ui primitives (generated — prefer `npx shadcn add` over hand edits)
-  providers/               App-wide client providers (Query, Session, Theme, Tooltip, Toaster)
+  providers/
+    app-providers.tsx        Composes all providers below — mounted once in app/layout.tsx
+    theme-provider.tsx        Dark/light mode — the ONE place theme behavior is configured
+  theme-toggle.tsx          Sun/moon button, reads/writes theme via next-themes
 lib/
   db/mongoose.ts           Cached Mongoose connection singleton
-  constants/                Roles, office hours + time slots, task description word limits
-  validations/              Zod schemas, shared by forms (client) and API routes (server)
-  word-count.ts              Shared word-count helper (Mongoose validator + Zod schema)
-  permissions.ts            Role → permission checks
-  utils.ts                  shadcn `cn()` helper
+  query-client.ts           TanStack Query client factory
+  constants/                 Roles, app name, office hours + time slots, task word limits
+  validations/                Zod schemas, shared by forms (client) and API routes (server)
+  word-count.ts               Shared word-count helper (Mongoose validator + Zod schema)
+  format.ts                   Shared date/time display helpers (date-fns)
+  permissions.ts             Role → permission checks
+  utils.ts                   shadcn `cn()` helper
 models/                    Mongoose schemas: User, Project, Task
 types/                     Ambient/module-augmentation types (next-auth.d.ts, global.d.ts)
 hooks/                     Shared React hooks (TanStack Query hooks live here once added)
@@ -59,6 +65,15 @@ proxy.ts                   Optimistic auth redirect for /admin, /manager, /emplo
 ```
 
 Roles (`lib/constants/roles.ts`): `admin`, `project_manager`, `employee`.
+
+### Theme
+
+Dark/light mode is configured in exactly one place — `components/providers/theme-provider.tsx`
+(wraps `next-themes`, `attribute="class"`, defaults to system preference). The color palette
+is defined in exactly one place — the `:root`/`.dark` blocks in `app/globals.css`; every
+component consumes it via Tailwind's `bg-`/`text-`/`border-` utilities (`bg-primary`,
+`text-muted-foreground`, `bg-success`, …), never a raw hex value. To retheme the app, edit
+only `globals.css`.
 
 ### Environment variables
 

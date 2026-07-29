@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
+import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants/app";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Taskline — Office Task Management",
-  description: "Office task management system for Taskline.",
+  title: `${APP_NAME} — Office Task Management`,
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({
