@@ -10,7 +10,9 @@ const PROTECTED_PREFIXES = ["/admin", "/manager", "/employee"];
 
 export default auth((req) => {
   const { nextUrl } = req;
-  const user = req.auth?.user;
+  const session = req.auth;
+  const user =
+    session?.user?.id && session.error !== "SessionRevoked" ? session.user : undefined;
 
   if (nextUrl.pathname === "/login") {
     if (user) {

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { PlusIcon, PencilIcon, CalendarIcon } from "lucide-react";
-import { useEmployees, useEmployeeSchedule } from "@/hooks/use-manager";
+import { PlusIcon, PencilIcon, Trash2Icon, CalendarIcon } from "lucide-react";
+import { toast } from "sonner";
+import { useEmployees, useEmployeeSchedule, useDeleteAssignedTask } from "@/hooks/use-manager";
 import { TIME_SLOTS, LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export function EmployeeScheduleView() {
   const { data: employeesData } = useEmployees();
   const employees = employeesData?.data ?? [];
 
+  const deleteTask = useDeleteAssignedTask();
   const { data: scheduleData, isLoading } = useEmployeeSchedule(selectedEmployee, selectedDate);
   const tasks = scheduleData?.data ?? [];
 
@@ -62,6 +64,15 @@ export function EmployeeScheduleView() {
     });
     setSelectedSlot(null);
     setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTask.mutateAsync(id);
+      toast.success("Task cancelled.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel task.");
+    }
   };
 
   return (
@@ -129,9 +140,22 @@ export function EmployeeScheduleView() {
                         <p className="text-muted-foreground text-xs">Assigned by: {task.assignedBy.name}</p>
                       )}
                     </div>
-                    <Button variant="ghost" size="icon-xs" onClick={() => openEditTask(task)} aria-label="Edit task">
-                      <PencilIcon />
-                    </Button>
+                    {!task.isReviewed && (
+                      <div className="flex shrink-0 gap-1">
+                        <Button variant="ghost" size="icon-xs" onClick={() => openEditTask(task)} aria-label="Edit task">
+                          <PencilIcon />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => handleDelete(task._id)}
+                          aria-label="Cancel task"
+                          disabled={deleteTask.isPending}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-1 items-center justify-between">

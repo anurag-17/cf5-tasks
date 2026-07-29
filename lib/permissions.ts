@@ -1,6 +1,6 @@
 import { ROLES, type Role } from "@/lib/constants/roles";
 
-type Permission = "manageUsers" | "manageProjects" | "assignTasks" | "viewAllTasks";
+export type Permission = "manageUsers" | "manageProjects" | "assignTasks" | "viewAllTasks";
 
 const ROLE_PERMISSIONS = {
   admin: {
@@ -25,6 +25,11 @@ const ROLE_PERMISSIONS = {
 
 export function can(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role][permission];
+}
+
+/** Employees may read project lists (e.g. task form dropdown) without manageProjects. */
+export function canReadProjects(role: Role): boolean {
+  return can(role, "manageProjects") || role === "employee";
 }
 
 export function isManagerial(role: Role): boolean {

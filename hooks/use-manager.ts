@@ -98,3 +98,14 @@ export function useEditAssignedTask() {
     },
   });
 }
+
+export function useDeleteAssignedTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJSON(`/api/manager/tasks/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-schedule"] });
+      qc.invalidateQueries({ queryKey: ["project-tasks"] });
+    },
+  });
+}

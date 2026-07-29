@@ -7,6 +7,7 @@ declare module "next-auth" {
   }
 
   interface Session {
+    error?: "SessionRevoked";
     user: {
       id: string;
       role: Role;
@@ -20,5 +21,6 @@ declare module "@auth/core/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    error?: "SessionRevoked";
   }
 }

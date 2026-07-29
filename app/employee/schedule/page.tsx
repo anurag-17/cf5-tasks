@@ -1,9 +1,5 @@
-import { SchedulePageClient } from "@/components/tasks/schedule-page-client";
+import { redirect } from "next/navigation";
 
-export default async function EmployeeSchedulePage() {
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <SchedulePageClient />
-    </div>
-  );
+export default function EmployeeSchedulePage() {
+  redirect("/employee/tasks");
 }

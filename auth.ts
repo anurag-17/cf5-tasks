@@ -50,16 +50,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
         token.role = user.role;
+        delete token.error;
       }
+
+      // Re-validate against DB on every request so deactivated users and
+      // role changes take effect immediately instead of waiting for JWT expiry.
+      if (token.id) {
+        await connectDB();
+        const dbUser = await User.findById(token.id).select("role isActive name email").lean();
+
+        if (!dbUser || !dbUser.isActive) {
+          return { ...token, error: "SessionRevoked" as const, id: "", role: "employee" };
+        }
+
+        token.role = dbUser.role;
+        token.name = dbUser.name;
+        token.email = dbUser.email;
+        delete token.error;
+      }
+
       return token;
     },
     session({ session, token }) {
+      if (token.error === "SessionRevoked" || !token.id) {
+        session.error = "SessionRevoked";
+        return session;
+      }
+
       session.user.id = token.id;
       session.user.role = token.role;
+      if (token.name) session.user.name = token.name as string;
+      if (token.email) session.user.email = token.email as string;
       return session;
     },
   },

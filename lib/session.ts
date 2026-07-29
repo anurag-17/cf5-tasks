@@ -14,7 +14,10 @@ import type { Role } from "@/lib/constants/roles";
 
 export async function getCurrentUser() {
   const session = await auth();
-  return session?.user ?? null;
+  if (!session?.user?.id || session.error === "SessionRevoked") {
+    return null;
+  }
+  return session.user;
 }
 
 /** Redirects to /login (preserving the current path as callbackUrl) if signed out. */

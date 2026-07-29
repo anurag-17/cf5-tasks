@@ -44,3 +44,4 @@ requirement.txt
 mockup/taskline-mockup.html
 scripts/seed-users.mjs
 AUDIT.md
+ROLE-MODULES-PLAN.md
