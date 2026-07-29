@@ -1,30 +1,32 @@
 import { z } from "zod";
-import { TASK_PRIORITIES, TASK_STATUSES, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import { TASK_START_TIMES, TASK_END_TIMES, TIME_SLOTS } from "@/lib/constants/office-hours";
+import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import { countWords } from "@/lib/word-count";
 
-const timeString = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: "Use 24-hour HH:mm format." });
-
-const wordCount = (value: string) => value.trim().split(/\s+/).filter(Boolean).length;
-
-export const taskSchema = z.object({
-  title: z.string().trim().min(3, { error: "Title must be at least 3 characters." }),
-  project: z.string().min(1, { error: "Select a project." }),
-  description: z
-    .string()
-    .trim()
-    .max(2000)
-    .refine((value) => wordCount(value) <= TASK_DESCRIPTION_MAX_WORDS, {
-      error: `Description must be ${TASK_DESCRIPTION_MAX_WORDS} words or fewer.`,
-    })
-    .optional(),
-  date: z.coerce.date(),
-  startTime: timeString,
-  endTime: timeString,
-  estimatedHours: z.coerce.number().positive({ error: "Must be greater than 0." }),
-  priority: z.enum(TASK_PRIORITIES),
-  status: z.enum(TASK_STATUSES).optional(),
-  assignedTo: z.string().min(1, { error: "Select an employee." }),
-});
+export const taskSchema = z
+  .object({
+    project: z.string().min(1, { error: "Select a project." }),
+    title: z.string().trim().min(3, { error: "Title must be at least 3 characters." }),
+    description: z
+      .string()
+      .trim()
+      .refine(
+        (value) => {
+          const words = countWords(value);
+          return words >= TASK_DESCRIPTION_MIN_WORDS && words <= TASK_DESCRIPTION_MAX_WORDS;
+        },
+        {
+          error: `Description must be between ${TASK_DESCRIPTION_MIN_WORDS} and ${TASK_DESCRIPTION_MAX_WORDS} words.`,
+        },
+      ),
+    date: z.coerce.date(),
+    startTime: z.enum(TASK_START_TIMES),
+    endTime: z.enum(TASK_END_TIMES),
+    assignedTo: z.string().min(1, { error: "Select an employee." }),
+  })
+  .refine(
+    (data) => TIME_SLOTS.some((slot) => slot.start === data.startTime && slot.end === data.endTime),
+    { error: "Select a valid hourly slot.", path: ["endTime"] },
+  );
 
 export type TaskInput = z.infer<typeof taskSchema>;

@@ -46,19 +46,19 @@ components/
   providers/               App-wide client providers (Query, Session, Theme, Tooltip, Toaster)
 lib/
   db/mongoose.ts           Cached Mongoose connection singleton
-  constants/                Roles, task status/priority, office hours — single source of truth
+  constants/                Roles, office hours + time slots, task description word limits
   validations/              Zod schemas, shared by forms (client) and API routes (server)
+  word-count.ts              Shared word-count helper (Mongoose validator + Zod schema)
   permissions.ts            Role → permission checks
   utils.ts                  shadcn `cn()` helper
-models/                    Mongoose schemas: User, Department, Project, Task, Notification
+models/                    Mongoose schemas: User, Project, Task
 types/                     Ambient/module-augmentation types (next-auth.d.ts, global.d.ts)
 hooks/                     Shared React hooks (TanStack Query hooks live here once added)
 auth.ts                    NextAuth v5 config (handlers, auth, signIn, signOut)
 proxy.ts                   Optimistic auth redirect for /admin, /manager, /employee
 ```
 
-Roles (`lib/constants/roles.ts`): `admin`, `project_manager`, `team_lead`, `employee`.
-Designation (job title, mostly for employees): Developer, Designer, SEO, Content Writer, HR, BDE, QA.
+Roles (`lib/constants/roles.ts`): `admin`, `project_manager`, `employee`.
 
 ### Environment variables
 
