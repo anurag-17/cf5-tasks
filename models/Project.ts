@@ -3,6 +3,7 @@ import { Schema, model, models, type Document, type Model, type Types } from "mo
 export interface IProject extends Document {
   name: string;
   description?: string;
+  isArchived: boolean;
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -20,9 +21,8 @@ const ProjectSchema = new Schema<IProject>(
     // rule on this (unlike Task's description), so it stays optional.
     description: { type: String, trim: true, maxlength: 1000 },
 
-    // The Project Manager who created it ("Project Manager can: Create
-    // projects"). Required — a project always has an owner to attribute it
-    // to and to scope "my projects" queries for that PM.
+    isArchived: { type: Boolean, default: false },
+
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true },
