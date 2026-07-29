@@ -1,0 +1,244 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { taskSchema } from "@/lib/validations/task";
+import type { TaskInput } from "@/lib/validations/task";
+import { useAssignTask, useEditAssignedTask, useEmployees } from "@/hooks/use-manager";
+import { useProjects } from "@/hooks/use-projects";
+import { TIME_SLOTS, LUNCH_START_TIME } from "@/lib/constants/office-hours";
+import { countWords } from "@/lib/word-count";
+import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+
+interface TaskForEdit {
+  _id: string;
+  project: { _id: string; name: string };
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  assignedTo: { _id: string; name: string };
+}
+
+interface AssignTaskDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  task?: TaskForEdit | null;
+  employeeId?: string;
+  date?: string;
+  slotStart?: string;
+  slotEnd?: string;
+}
+
+export function AssignTaskDialog({
+  open,
+  onOpenChange,
+  task,
+  employeeId,
+  date,
+  slotStart,
+  slotEnd,
+}: AssignTaskDialogProps) {
+  const isEdit = !!task;
+  const { data: employeesData } = useEmployees();
+  const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
+  const employees = employeesData?.data ?? [];
+  const projects = (projectsData?.data?.projects ?? []) as Array<{ _id: string; name: string }>;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<TaskInput>({
+    resolver: zodResolver(taskSchema),
+  });
+
+  const assignTask = useAssignTask();
+  const editTask = useEditAssignedTask();
+
+  useEffect(() => {
+    if (task) {
+      reset({
+        project: task.project._id,
+        title: task.title,
+        description: task.description,
+        date: new Date(task.date),
+        startTime: task.startTime as TaskInput["startTime"],
+        endTime: task.endTime as TaskInput["endTime"],
+        assignedTo: task.assignedTo._id,
+      });
+    } else {
+      reset({
+        project: "",
+        title: "",
+        description: "",
+        date: date ? new Date(date) : new Date(),
+        startTime: (slotStart ?? "09:30") as TaskInput["startTime"],
+        endTime: (slotEnd ?? "10:30") as TaskInput["endTime"],
+        assignedTo: employeeId ?? "",
+      });
+    }
+  }, [task, date, slotStart, slotEnd, employeeId, reset]);
+
+  const onSubmit = async (data: TaskInput) => {
+    try {
+      if (isEdit) {
+        await editTask.mutateAsync({ id: task._id, data });
+        toast.success("Task updated.");
+      } else {
+        await assignTask.mutateAsync(data);
+        toast.success("Task assigned successfully.");
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+    }
+  };
+
+  const description = watch("description") ?? "";
+  const wordCount = countWords(description);
+  const startTime = watch("startTime");
+
+  const handleSlotChange = (start: string) => {
+    const slot = TIME_SLOTS.find((s) => s.start === start);
+    if (slot) {
+      setValue("startTime", slot.start as TaskInput["startTime"]);
+      setValue("endTime", slot.end as TaskInput["endTime"]);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Assigned Task" : "Assign Task"}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? "Update this assigned task." : "Assign a task to an employee."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label>Employee</Label>
+            <Select
+              value={watch("assignedTo") ?? ""}
+              onValueChange={(v) => setValue("assignedTo", v ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e._id} value={e._id}>
+                    {e.name} ({e.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.assignedTo && <p className="text-destructive text-xs">{errors.assignedTo.message}</p>}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Project</Label>
+            <Select
+              value={watch("project") ?? ""}
+              onValueChange={(v) => setValue("project", v ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p._id} value={p._id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.project && <p className="text-destructive text-xs">{errors.project.message}</p>}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="assign-title">Title</Label>
+            <Input id="assign-title" placeholder="Task title" {...register("title")} aria-invalid={!!errors.title} />
+            {errors.title && <p className="text-destructive text-xs">{errors.title.message}</p>}
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="assign-desc">Description</Label>
+            <Textarea
+              id="assign-desc"
+              placeholder="Describe the task (200–400 words)…"
+              className="min-h-32"
+              {...register("description")}
+              aria-invalid={!!errors.description}
+            />
+            <div className="flex justify-between">
+              {errors.description && <p className="text-destructive text-xs">{errors.description.message}</p>}
+              <p className={`text-xs ml-auto ${wordCount < TASK_DESCRIPTION_MIN_WORDS || wordCount > TASK_DESCRIPTION_MAX_WORDS ? "text-destructive" : "text-muted-foreground"}`}>
+                {wordCount} / {TASK_DESCRIPTION_MIN_WORDS}–{TASK_DESCRIPTION_MAX_WORDS} words
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="assign-date">Date</Label>
+              <Input id="assign-date" type="date" {...register("date", { valueAsDate: true })} aria-invalid={!!errors.date} />
+              {errors.date && <p className="text-destructive text-xs">{errors.date.message}</p>}
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Time Slot</Label>
+              <Select value={startTime ?? ""} onValueChange={(v) => handleSlotChange(v ?? "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select slot" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_SLOTS.map((slot) => {
+                    const isLunch = slot.start === LUNCH_START_TIME;
+                    return (
+                      <SelectItem key={slot.start} value={slot.start} disabled={isLunch}>
+                        {slot.start} – {slot.end}{isLunch ? " (Lunch)" : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              {errors.endTime && <p className="text-destructive text-xs">{errors.endTime.message}</p>}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving…" : isEdit ? "Update" : "Assign"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
