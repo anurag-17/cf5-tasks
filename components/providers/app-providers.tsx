@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -20,7 +19,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
             {children}
             <Toaster richColors position="top-right" />
           </TooltipProvider>
-          <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
       </SessionProvider>
     </ThemeProvider>

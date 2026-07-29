@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlusIcon, SearchIcon, PencilIcon, Trash2Icon, ArchiveIcon, ArchiveRestoreIcon } from "lucide-react";
+import {
+  PlusIcon,
+  SearchIcon,
+  PencilIcon,
+  Trash2Icon,
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useProjects, useToggleArchiveProject, type ProjectData } from "@/hooks/use-projects";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
@@ -25,6 +32,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 
@@ -36,8 +45,13 @@ export function ProjectsPageClient() {
   const [archivedFilter, setArchivedFilter] = useState("false");
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editProject, setEditProject] = useState<{ _id: string; name: string; description?: string } | null>(null);
+  const [editProject, setEditProject] = useState<{
+    _id: string;
+    name: string;
+    description?: string;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ _id: string; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<ProjectData | null>(null);
 
   const toggleArchive = useToggleArchiveProject();
 
@@ -55,10 +69,17 @@ export function ProjectsPageClient() {
   const projects = data?.data?.projects ?? [];
   const totalPages = data?.data?.totalPages ?? 1;
 
-  const handleToggleArchive = async (id: string, name: string) => {
+  const handleConfirmArchive = async () => {
+    if (!archiveTarget) return;
+    const isArchived = archiveTarget.isArchived;
     try {
-      await toggleArchive.mutateAsync(id);
-      toast.success(`"${name}" archive status updated.`);
+      await toggleArchive.mutateAsync(archiveTarget._id);
+      toast.success(
+        isArchived
+          ? `"${archiveTarget.name}" has been restored.`
+          : `"${archiveTarget.name}" has been archived.`,
+      );
+      setArchiveTarget(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update archive status.");
     }
@@ -139,31 +160,55 @@ export function ProjectsPageClient() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => openEdit(p)}
-                      aria-label={`Edit ${p.name}`}
-                    >
-                      <PencilIcon />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => handleToggleArchive(p._id, p.name)}
-                      aria-label={p.isArchived ? `Unarchive ${p.name}` : `Archive ${p.name}`}
-                      disabled={toggleArchive.isPending}
-                    >
-                      {p.isArchived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setDeleteTarget(p)}
-                      aria-label={`Delete ${p.name}`}
-                    >
-                      <Trash2Icon />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => openEdit(p)}
+                            aria-label={`Edit ${p.name}`}
+                          />
+                        }
+                      >
+                        <PencilIcon />
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => setArchiveTarget(p)}
+                            aria-label={p.isArchived ? `Restore ${p.name}` : `Archive ${p.name}`}
+                            disabled={toggleArchive.isPending}
+                          />
+                        }
+                      >
+                        {p.isArchived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
+                      </TooltipTrigger>
+                      <TooltipContent>{p.isArchived ? "Restore" : "Archive"}</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setDeleteTarget(p)}
+                            aria-label={`Delete ${p.name}`}
+                          />
+                        }
+                      >
+                        <Trash2Icon />
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
                   </div>
                 </TableCell>
               </TableRow>
@@ -175,7 +220,36 @@ export function ProjectsPageClient() {
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <ProjectFormDialog open={formOpen} onOpenChange={setFormOpen} project={editProject} />
-      <DeleteProjectDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)} project={deleteTarget} />
+
+      <DeleteProjectDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        project={deleteTarget}
+      />
+
+      <ConfirmDeleteDialog
+        open={!!archiveTarget}
+        onOpenChange={(open) => !open && setArchiveTarget(null)}
+        title={archiveTarget?.isArchived ? "Restore Project" : "Archive Project"}
+        description={
+          archiveTarget?.isArchived ? (
+            <>
+              Restore <strong>{archiveTarget.name}</strong>? It will appear in the active projects
+              list again.
+            </>
+          ) : (
+            <>
+              Archive <strong>{archiveTarget?.name}</strong>? It will be hidden from active project
+              lists. Existing tasks stay linked.
+            </>
+          )
+        }
+        confirmLabel={archiveTarget?.isArchived ? "Restore" : "Archive"}
+        pendingLabel={archiveTarget?.isArchived ? "Restoring…" : "Archiving…"}
+        confirmVariant="default"
+        isPending={toggleArchive.isPending}
+        onConfirm={handleConfirmArchive}
+      />
     </div>
   );
 }

@@ -93,14 +93,15 @@
   --chart-4: #1e4766;
   --chart-5: #14324a;
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #182230;
-  --sidebar-primary: #2c5f8a;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e3edf6;
-  --sidebar-accent-foreground: #1e4766;
-  --sidebar-border: #dce3ea;
-  --sidebar-ring: #2c5f8a;
+  /* Dark navy sidebar even in light mode (dashboard chrome). */
+  --sidebar: #152033;
+  --sidebar-foreground: #e6eaef;
+  --sidebar-primary: #6fa8d6;
+  --sidebar-primary-foreground: #0e1620;
+  --sidebar-accent: #1e2d45;
+  --sidebar-accent-foreground: #e6eaef;
+  --sidebar-border: #243247;
+  --sidebar-ring: #6fa8d6;
 }
 
 .dark {

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (employeeFilter) employeeQuery._id = employeeFilter;
 
     const [employees, tasks] = await Promise.all([
-      User.find(employeeQuery).select("name email").sort({ name: 1 }).lean(),
+      User.find(employeeQuery).select("name").sort({ name: 1 }).lean(),
       Task.find(taskFilter)
         .populate("project", "name")
         .populate("assignedBy", "name")
@@ -35,22 +35,26 @@ export async function GET(req: NextRequest) {
 
     const taskMap: Record<
       string,
-      Record<string, { title: string; project: string; assignedBy: string }>
+      Record<
+        string,
+        { title: string; description: string; project: string; assignedBy: string; endTime: string }
+      >
     > = {};
     for (const t of tasks) {
       const empId = t.assignedTo.toString();
       if (!taskMap[empId]) taskMap[empId] = {};
       taskMap[empId][t.startTime] = {
         title: t.title,
+        description: t.description,
         project: populatedName(t.project),
         assignedBy: populatedName(t.assignedBy, "Self"),
+        endTime: t.endTime,
       };
     }
 
     const rows = employees.map((emp) => ({
       _id: emp._id.toString(),
       name: emp.name,
-      email: emp.email,
       slots: taskMap[emp._id.toString()] ?? {},
     }));
 

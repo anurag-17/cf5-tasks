@@ -2,23 +2,57 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import {
+  CalendarDaysIcon,
+  UsersIcon,
+  FolderKanbanIcon,
+  ListTodoIcon,
+  ClipboardListIcon,
+  type LucideIcon,
+} from "lucide-react";
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
-export function ModuleNavLink({ href, label }: { href: string; label: string }) {
+function isNavActive(pathname: string, href: string) {
+  if (pathname === href) return true;
+  if (href === "/admin" || href === "/manager" || href === "/employee") {
+    return false;
+  }
+  return pathname.startsWith(`${href}/`);
+}
+
+const NAV_ICONS: Record<string, LucideIcon> = {
+  calendarDays: CalendarDaysIcon,
+  users: UsersIcon,
+  folderKanban: FolderKanbanIcon,
+  listTodo: ListTodoIcon,
+  clipboardList: ClipboardListIcon,
+};
+
+export function ModuleNavLink({
+  href,
+  label,
+  iconKey,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  iconKey?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+  const isActive = isNavActive(pathname, href);
+  const Icon = iconKey ? NAV_ICONS[iconKey] : undefined;
 
   return (
-    <Link
-      href={href}
-      className={cn(
-        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-        isActive
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      {label}
-    </Link>
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={isActive}
+        tooltip={label}
+        render={<Link href={href} onClick={onNavigate} />}
+      >
+        {Icon ? <Icon aria-hidden /> : null}
+        <span>{label}</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }

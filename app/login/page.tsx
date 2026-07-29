@@ -23,7 +23,7 @@ export default async function LoginPage({
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg text-sm font-bold">
-              T
+              C
             </span>
             <span className="text-base font-semibold tracking-tight">{APP_NAME}</span>
           </div>

@@ -4,14 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 
 interface SlotData {
   title: string;
+  description: string;
   project: string;
   assignedBy: string;
+  endTime: string;
 }
 
 export interface ScheduleRow {
   _id: string;
   name: string;
-  email: string;
   slots: Record<string, SlotData>;
 }
 

@@ -17,7 +17,10 @@ interface ConfirmDeleteDialogProps {
   description: React.ReactNode;
   confirmLabel?: string;
   pendingLabel?: string;
+  cancelLabel?: string;
   isPending?: boolean;
+  /** Defaults to destructive (red) for delete; use "default" for archive/restore. */
+  confirmVariant?: "destructive" | "default";
   onConfirm: () => void | Promise<void>;
 }
 
@@ -28,7 +31,9 @@ export function ConfirmDeleteDialog({
   description,
   confirmLabel = "Delete",
   pendingLabel = "Deleting…",
+  cancelLabel = "Cancel",
   isPending = false,
+  confirmVariant = "destructive",
   onConfirm,
 }: ConfirmDeleteDialogProps) {
   return (
@@ -39,10 +44,10 @@ export function ConfirmDeleteDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            {cancelLabel}
           </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+          <Button variant={confirmVariant} onClick={onConfirm} disabled={isPending}>
             {isPending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>

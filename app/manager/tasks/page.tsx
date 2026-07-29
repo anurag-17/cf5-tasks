@@ -2,7 +2,7 @@ import { ManagerDashboardClient } from "@/components/manager/manager-dashboard-c
 
 export default async function ManagerTasksPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="mx-auto max-w-5xl">
       <h1 className="mb-4 text-xl font-semibold">Task Management</h1>
       <ManagerDashboardClient />
     </div>
