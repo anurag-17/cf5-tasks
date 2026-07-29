@@ -45,3 +45,4 @@ mockup/taskline-mockup.html
 scripts/seed-users.mjs
 AUDIT.md
 ROLE-MODULES-PLAN.md
+scripts/seed-demo.mjs

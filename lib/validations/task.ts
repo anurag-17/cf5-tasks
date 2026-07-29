@@ -50,6 +50,8 @@ export const employeeTaskSchema = z
     date: z.coerce.date(),
     startTime: z.enum(TASK_START_TIMES),
     endTime: z.enum(TASK_END_TIMES),
+    // Empty / omitted = self-logged task (no PM). Otherwise a project_manager user id.
+    assignedBy: z.string().optional(),
   })
   .refine(
     (data) => TIME_SLOTS.some((slot) => slot.start === data.startTime && slot.end === data.endTime),
@@ -78,6 +80,7 @@ export const updateEmployeeTaskSchema = z
     date: z.coerce.date().optional(),
     startTime: z.enum(TASK_START_TIMES).optional(),
     endTime: z.enum(TASK_END_TIMES).optional(),
+    assignedBy: z.string().optional(),
   })
   .refine(
     (data) => {

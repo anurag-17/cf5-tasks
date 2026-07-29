@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireApiRole } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
-import { Task } from "@/models";
+import { toUtcDayStart } from "@/lib/dates";
+import { toObjectId } from "@/lib/mongoose-helpers";
+import { Task, User } from "@/models";
 import { updateEmployeeTaskSchema } from "@/lib/validations/task";
 import { LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 
@@ -47,9 +49,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     if (parsed.startTime && parsed.startTime !== task.startTime) {
-      const newDate = parsed.date
-        ? new Date(parsed.date.getFullYear(), parsed.date.getMonth(), parsed.date.getDate())
-        : task.date;
+      const newDate = parsed.date ? toUtcDayStart(parsed.date) : task.date;
 
       const conflict = await Task.findOne({
         assignedTo: user.id,
@@ -67,17 +67,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     if (parsed.date) {
-      task.date = new Date(
-        parsed.date.getFullYear(),
-        parsed.date.getMonth(),
-        parsed.date.getDate(),
-      );
+      task.date = toUtcDayStart(parsed.date);
     }
-    if (parsed.project) task.project = parsed.project as unknown as typeof task.project;
+    if (parsed.project) task.project = toObjectId(parsed.project);
     if (parsed.title) task.title = parsed.title;
     if (parsed.description) task.description = parsed.description;
     if (parsed.startTime) task.startTime = parsed.startTime;
     if (parsed.endTime) task.endTime = parsed.endTime;
+
+    if (parsed.assignedBy !== undefined) {
+      if (!parsed.assignedBy) {
+        task.assignedBy = undefined;
+      } else {
+        const manager = await User.findOne({
+          _id: parsed.assignedBy,
+          role: "project_manager",
+          isActive: true,
+        }).select("_id");
+        if (!manager) {
+          return NextResponse.json(
+            { success: false, error: "Select a valid project manager." },
+            { status: 400 },
+          );
+        }
+        task.assignedBy = manager._id;
+      }
+    }
 
     await task.save();
     return NextResponse.json({ success: true, data: task });

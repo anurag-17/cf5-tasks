@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { PlusIcon, SearchIcon, PencilIcon, Trash2Icon, ArchiveIcon, ArchiveRestoreIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useProjects, useToggleArchiveProject } from "@/hooks/use-projects";
+import { useProjects, useToggleArchiveProject, type ProjectData } from "@/hooks/use-projects";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -26,21 +28,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProjectFormDialog } from "./project-form-dialog";
 import { DeleteProjectDialog } from "./delete-project-dialog";
 
-interface ProjectRow {
-  _id: string;
-  name: string;
-  description?: string;
-  isArchived: boolean;
-  createdBy: { _id: string; name: string; email: string } | null;
-  createdAt: string;
-}
-
 const LIMIT = 10;
 
 export function ProjectsPageClient() {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { search, setSearch, debouncedSearch } = useDebouncedSearch();
   const [archivedFilter, setArchivedFilter] = useState("false");
 
   const [formOpen, setFormOpen] = useState(false);
@@ -49,14 +41,9 @@ export function ProjectsPageClient() {
 
   const toggleArchive = useToggleArchiveProject();
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debounceTimeout = useCallback((value: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPage(1);
-    }, 300);
-  }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, archivedFilter]);
 
   const { data, isLoading } = useProjects({
     page,
@@ -65,7 +52,7 @@ export function ProjectsPageClient() {
     archived: archivedFilter,
   });
 
-  const projects = (data?.data?.projects ?? []) as ProjectRow[];
+  const projects = data?.data?.projects ?? [];
   const totalPages = data?.data?.totalPages ?? 1;
 
   const handleToggleArchive = async (id: string, name: string) => {
@@ -82,7 +69,7 @@ export function ProjectsPageClient() {
     setFormOpen(true);
   };
 
-  const openEdit = (p: ProjectRow) => {
+  const openEdit = (p: ProjectData) => {
     setEditProject({ _id: p._id, name: p.name, description: p.description });
     setFormOpen(true);
   };
@@ -104,14 +91,12 @@ export function ProjectsPageClient() {
             placeholder="Search projects…"
             className="pl-8"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              debounceTimeout(e.target.value);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search projects"
           />
         </div>
-        <Select value={archivedFilter} onValueChange={(v) => { setArchivedFilter(v ?? "false"); setPage(1); }}>
-          <SelectTrigger className="w-40">
+        <Select value={archivedFilter} onValueChange={(v) => setArchivedFilter(v ?? "false")}>
+          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by archive status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -187,19 +172,7 @@ export function ProjectsPageClient() {
         </Table>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-muted-foreground text-sm">
-            Page {page} of {totalPages}
-          </span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <ProjectFormDialog open={formOpen} onOpenChange={setFormOpen} project={editProject} />
       <DeleteProjectDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)} project={deleteTarget} />

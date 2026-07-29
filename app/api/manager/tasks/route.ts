@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireManagerApi } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { toUtcDayStart } from "@/lib/dates";
 import { Task } from "@/models";
 import { taskSchema } from "@/lib/validations/task";
 
@@ -15,11 +16,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = taskSchema.parse(body);
 
-    const dayStart = new Date(
-      parsed.date.getFullYear(),
-      parsed.date.getMonth(),
-      parsed.date.getDate(),
-    );
+    const dayStart = toUtcDayStart(parsed.date);
 
     const existing = await Task.findOne({
       assignedTo: parsed.assignedTo,

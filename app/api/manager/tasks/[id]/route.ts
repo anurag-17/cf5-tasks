@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireManagerApi } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { toUtcDayStart } from "@/lib/dates";
+import { toObjectId } from "@/lib/mongoose-helpers";
 import { Task } from "@/models";
 import { taskSchema } from "@/lib/validations/task";
 
@@ -31,11 +33,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const parsed = taskSchema.parse(body);
 
-    const dayStart = new Date(
-      parsed.date.getFullYear(),
-      parsed.date.getMonth(),
-      parsed.date.getDate(),
-    );
+    const dayStart = toUtcDayStart(parsed.date);
 
     if (
       parsed.startTime !== task.startTime ||
@@ -56,13 +54,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
     }
 
-    task.project = parsed.project as unknown as typeof task.project;
+    task.project = toObjectId(parsed.project);
     task.title = parsed.title;
     task.description = parsed.description;
     task.date = dayStart;
     task.startTime = parsed.startTime;
     task.endTime = parsed.endTime;
-    task.assignedTo = parsed.assignedTo as unknown as typeof task.assignedTo;
+    task.assignedTo = toObjectId(parsed.assignedTo);
 
     await task.save();
     return NextResponse.json({ success: true, data: task });

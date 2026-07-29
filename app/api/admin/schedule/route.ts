@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireApiRole } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { resolveDateParam } from "@/lib/dates";
+import { populatedName } from "@/lib/mongoose-helpers";
 import { Task, User } from "@/models";
 
 export async function GET(req: NextRequest) {
@@ -14,8 +16,7 @@ export async function GET(req: NextRequest) {
     const employeeFilter = req.nextUrl.searchParams.get("employee");
     const projectFilter = req.nextUrl.searchParams.get("project");
 
-    const date = dateParam ? new Date(dateParam) : new Date();
-    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayStart = resolveDateParam(dateParam);
 
     const taskFilter: Record<string, unknown> = { date: dayStart };
     if (employeeFilter) taskFilter.assignedTo = employeeFilter;
@@ -41,8 +42,8 @@ export async function GET(req: NextRequest) {
       if (!taskMap[empId]) taskMap[empId] = {};
       taskMap[empId][t.startTime] = {
         title: t.title,
-        project: (t.project as unknown as { name: string })?.name ?? "—",
-        assignedBy: (t.assignedBy as unknown as { name: string })?.name ?? "Self",
+        project: populatedName(t.project),
+        assignedBy: populatedName(t.assignedBy, "Self"),
       };
     }
 

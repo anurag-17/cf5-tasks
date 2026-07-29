@@ -31,6 +31,8 @@ import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
 import { z } from "zod";
 
+const SELF_ASSIGNED = "__self__";
+
 interface TaskForEdit {
   _id: string;
   project: { _id: string; name: string };
@@ -39,6 +41,7 @@ interface TaskForEdit {
   date: string;
   startTime: string;
   endTime: string;
+  assignedBy?: { _id: string; name: string };
 }
 
 interface Project {
@@ -46,20 +49,45 @@ interface Project {
   name: string;
 }
 
+interface Manager {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+interface TaskCopySource {
+  project: { _id: string; name: string };
+  title: string;
+  description: string;
+  assignedBy?: { _id: string; name: string };
+}
+
 interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: TaskForEdit | null;
+  copyFrom?: TaskCopySource | null;
   date: string;
   slotStart?: string;
   slotEnd?: string;
 }
 
-export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slotEnd }: TaskFormDialogProps) {
-  const isEdit = !!task;
-  const [projects, setProjects] = useState<Project[]>([]);
+type TaskFormValues = z.input<typeof employeeTaskSchema>;
 
-  type TaskFormValues = z.input<typeof employeeTaskSchema>;
+export function TaskFormDialog({
+  open,
+  onOpenChange,
+  task,
+  copyFrom,
+  date,
+  slotStart,
+  slotEnd,
+}: TaskFormDialogProps) {
+  const isEdit = !!task;
+  const isCopy = !!copyFrom && !isEdit;
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
+
   const {
     register,
     handleSubmit,
@@ -75,25 +103,53 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
   const updateTask = useUpdateTask();
 
   useEffect(() => {
-    if (open) {
-      fetch("/api/projects?limit=100&archived=false")
-        .then((r) => r.json())
-        .then((res) => {
-          if (res.success) setProjects(res.data.projects);
-        })
-        .catch(() => {});
-    }
+    if (!open) return;
+    Promise.all([
+      fetch("/api/projects?limit=100&archived=false").then((r) => r.json()),
+      fetch("/api/employee/managers").then((r) => r.json()),
+    ])
+      .then(([projectsRes, managersRes]) => {
+        if (projectsRes.success) {
+          setProjects(
+            (projectsRes.data.projects as Project[]).map((p) => ({
+              _id: String(p._id),
+              name: p.name,
+            })),
+          );
+        }
+        if (managersRes.success) {
+          setManagers(
+            (managersRes.data as Manager[]).map((m) => ({
+              _id: String(m._id),
+              name: m.name,
+              email: m.email,
+            })),
+          );
+        }
+      })
+      .catch(() => {});
   }, [open]);
 
   useEffect(() => {
     if (task) {
       reset({
-        project: task.project._id,
+        project: String(task.project._id),
         title: task.title,
         description: task.description,
         date: new Date(task.date),
         startTime: task.startTime as EmployeeTaskInput["startTime"],
         endTime: task.endTime as EmployeeTaskInput["endTime"],
+        assignedBy: task.assignedBy?._id ? String(task.assignedBy._id) : undefined,
+      });
+    } else if (copyFrom) {
+      reset({
+        project: String(copyFrom.project._id),
+        title: copyFrom.title,
+        description: copyFrom.description,
+        date: new Date(date),
+        startTime: (slotStart ?? "09:30") as EmployeeTaskInput["startTime"],
+        endTime: (slotEnd ?? "10:30") as EmployeeTaskInput["endTime"],
+        assignedBy: copyFrom.assignedBy?._id ? String(copyFrom.assignedBy._id) : undefined,
       });
     } else {
       reset({
@@ -103,18 +159,26 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
         date: new Date(date),
         startTime: (slotStart ?? "09:30") as EmployeeTaskInput["startTime"],
         endTime: (slotEnd ?? "10:30") as EmployeeTaskInput["endTime"],
+        assignedBy: undefined,
       });
     }
-  }, [task, date, slotStart, slotEnd, reset]);
+  }, [task, copyFrom, date, slotStart, slotEnd, reset]);
 
   const onSubmit = async (values: TaskFormValues) => {
     try {
       const data = employeeTaskSchema.parse(values);
+      const payload = {
+        ...data,
+        assignedBy: data.assignedBy || undefined,
+      };
       if (isEdit) {
-        await updateTask.mutateAsync({ id: task._id, data });
+        await updateTask.mutateAsync({
+          id: task._id,
+          data: { ...payload, assignedBy: payload.assignedBy ?? "" },
+        });
         toast.success("Task updated successfully.");
       } else {
-        await createTask.mutateAsync(data);
+        await createTask.mutateAsync(payload);
         toast.success("Task created successfully.");
       }
       onOpenChange(false);
@@ -126,6 +190,12 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
   const description = watch("description") ?? "";
   const wordCount = countWords(description);
   const startTime = watch("startTime");
+  const projectId = watch("project") ?? "";
+  const assignedById = watch("assignedBy") ?? "";
+
+  const projectLabel = projects.find((p) => p._id === projectId)?.name;
+  const managerLabel = managers.find((m) => m._id === assignedById)?.name;
+  const slotLabel = TIME_SLOTS.find((s) => s.start === startTime);
 
   const handleSlotChange = (start: string) => {
     const slot = TIME_SLOTS.find((s) => s.start === start);
@@ -139,20 +209,28 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Task" : "Add Task"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edit Task" : isCopy ? "Copy Task to Next Slot" : "Add Task"}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update your task details." : "Fill in your task for this time slot."}
+            {isEdit
+              ? "Update your task details."
+              : isCopy
+                ? `Same details copied to ${slotStart ?? ""}–${slotEnd ?? ""}. Review and save.`
+                : "Fill in your task for this time slot."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label>Project</Label>
             <Select
-              value={watch("project") ?? ""}
-              onValueChange={(v) => setValue("project", v ?? "")}
+              value={projectId || null}
+              onValueChange={(v) => setValue("project", v ?? "", { shouldValidate: true })}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select project" />
+                <SelectValue placeholder="Select project">
+                  {projectLabel ?? null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {projects.map((p) => (
@@ -166,8 +244,42 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
           </div>
 
           <div className="grid gap-1.5">
+            <Label>Assigned By (Project Manager)</Label>
+            <Select
+              value={assignedById || SELF_ASSIGNED}
+              onValueChange={(v) =>
+                setValue("assignedBy", !v || v === SELF_ASSIGNED ? undefined : v, {
+                  shouldValidate: true,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Self (optional)">
+                  {assignedById ? (managerLabel ?? null) : "Self"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SELF_ASSIGNED}>Self</SelectItem>
+                {managers.map((m) => (
+                  <SelectItem key={m._id} value={m._id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              Optional — pick the PM if this work was assigned by them.
+            </p>
+          </div>
+
+          <div className="grid gap-1.5">
             <Label htmlFor="task-title">Title</Label>
-            <Input id="task-title" placeholder="Task title (main point)" {...register("title")} aria-invalid={!!errors.title} />
+            <Input
+              id="task-title"
+              placeholder="Task title (main point)"
+              {...register("title")}
+              aria-invalid={!!errors.title}
+            />
             {errors.title && <p className="text-destructive text-xs">{errors.title.message}</p>}
           </div>
 
@@ -181,8 +293,16 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
               aria-invalid={!!errors.description}
             />
             <div className="flex justify-between">
-              {errors.description && <p className="text-destructive text-xs">{errors.description.message}</p>}
-              <p className={`text-xs ml-auto ${wordCount < TASK_DESCRIPTION_MIN_WORDS || wordCount > TASK_DESCRIPTION_MAX_WORDS ? "text-destructive" : "text-muted-foreground"}`}>
+              {errors.description && (
+                <p className="text-destructive text-xs">{errors.description.message}</p>
+              )}
+              <p
+                className={`text-xs ml-auto ${
+                  wordCount < TASK_DESCRIPTION_MIN_WORDS || wordCount > TASK_DESCRIPTION_MAX_WORDS
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                }`}
+              >
                 {wordCount} / {TASK_DESCRIPTION_MIN_WORDS}–{TASK_DESCRIPTION_MAX_WORDS} words
               </p>
             </div>
@@ -190,18 +310,18 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
 
           <div className="grid gap-1.5">
             <Label>Time Slot</Label>
-            <Select value={startTime ?? ""} onValueChange={(v) => handleSlotChange(v ?? "")}>
+            <Select value={startTime ?? null} onValueChange={(v) => handleSlotChange(v ?? "")}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select time slot" />
+                <SelectValue placeholder="Select time slot">
+                  {slotLabel ? `${slotLabel.start} – ${slotLabel.end}` : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {TIME_SLOTS.map((slot) => {
-                  return (
-                    <SelectItem key={slot.start} value={slot.start}>
-                      {slot.start} – {slot.end}
-                    </SelectItem>
-                  );
-                })}
+                {TIME_SLOTS.map((slot) => (
+                  <SelectItem key={slot.start} value={slot.start}>
+                    {slot.start} – {slot.end}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {errors.endTime && <p className="text-destructive text-xs">{errors.endTime.message}</p>}

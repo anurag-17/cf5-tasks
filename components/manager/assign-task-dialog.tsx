@@ -148,11 +148,13 @@ export function AssignTaskDialog({
           <div className="grid gap-1.5">
             <Label>Employee</Label>
             <Select
-              value={watch("assignedTo") ?? ""}
+              value={watch("assignedTo") || null}
               onValueChange={(v) => setValue("assignedTo", v ?? "")}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select employee" />
+                <SelectValue placeholder="Select employee">
+                  {employees.find((e) => e._id === watch("assignedTo"))?.name ?? null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {employees.map((e) => (
@@ -168,15 +170,17 @@ export function AssignTaskDialog({
           <div className="grid gap-1.5">
             <Label>Project</Label>
             <Select
-              value={watch("project") ?? ""}
+              value={watch("project") || null}
               onValueChange={(v) => setValue("project", v ?? "")}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select project" />
+                <SelectValue placeholder="Select project">
+                  {projects.find((p) => p._id === watch("project"))?.name ?? null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {projects.map((p) => (
-                  <SelectItem key={p._id} value={p._id}>
+                  <SelectItem key={p._id} value={String(p._id)}>
                     {p.name}
                   </SelectItem>
                 ))}
@@ -216,9 +220,13 @@ export function AssignTaskDialog({
             </div>
             <div className="grid gap-1.5">
               <Label>Time Slot</Label>
-              <Select value={startTime ?? ""} onValueChange={(v) => handleSlotChange(v ?? "")}>
+              <Select value={startTime ?? null} onValueChange={(v) => handleSlotChange(v ?? "")}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select slot" />
+                  <SelectValue placeholder="Select slot">
+                    {TIME_SLOTS.find((s) => s.start === startTime)
+                      ? `${startTime} – ${TIME_SLOTS.find((s) => s.start === startTime)?.end}`
+                      : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {TIME_SLOTS.map((slot) => (

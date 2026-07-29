@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireApiRole } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
-import { Task } from "@/models";
+import { toUtcDayStart } from "@/lib/dates";
+import { Task, User } from "@/models";
 import { employeeTaskSchema } from "@/lib/validations/task";
+
+async function resolveAssignedBy(assignedBy?: string) {
+  if (!assignedBy) return undefined;
+  const manager = await User.findOne({
+    _id: assignedBy,
+    role: "project_manager",
+    isActive: true,
+  }).select("_id");
+  if (!manager) {
+    return { error: "Select a valid project manager." as const };
+  }
+  return { id: manager._id };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,11 +29,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = employeeTaskSchema.parse(body);
 
-    const dayStart = new Date(
-      parsed.date.getFullYear(),
-      parsed.date.getMonth(),
-      parsed.date.getDate(),
-    );
+    const dayStart = toUtcDayStart(parsed.date);
 
     const existing = await Task.findOne({
       assignedTo: user.id,
@@ -34,10 +44,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const assignedByResult = await resolveAssignedBy(parsed.assignedBy);
+    if (assignedByResult && "error" in assignedByResult) {
+      return NextResponse.json(
+        { success: false, error: assignedByResult.error },
+        { status: 400 },
+      );
+    }
+
+    const { assignedBy: _ignored, ...taskFields } = parsed;
     const task = await Task.create({
-      ...parsed,
+      ...taskFields,
       date: dayStart,
       assignedTo: user.id,
+      ...(assignedByResult?.id ? { assignedBy: assignedByResult.id } : {}),
     });
 
     return NextResponse.json({ success: true, data: task }, { status: 201 });

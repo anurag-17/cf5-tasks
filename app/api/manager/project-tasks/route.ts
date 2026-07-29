@@ -3,6 +3,7 @@ import { z } from "zod";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireManagerApi } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { parseDateParam } from "@/lib/dates";
 import { Project, Task } from "@/models";
 
 const querySchema = z.object({
@@ -33,8 +34,7 @@ export async function GET(req: NextRequest) {
 
     const filter: Record<string, unknown> = { project: query.project };
     if (query.date) {
-      const d = new Date(query.date);
-      filter.date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      filter.date = parseDateParam(query.date);
     }
 
     const [tasks, total] = await Promise.all([

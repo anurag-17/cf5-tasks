@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { requireApiRole } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { resolveDateParam, toUtcDayStart } from "@/lib/dates";
 import { Task } from "@/models";
 
 export async function GET(req: NextRequest) {
@@ -12,8 +13,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const dateParam = req.nextUrl.searchParams.get("date");
-    const date = dateParam ? new Date(dateParam) : new Date();
-    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayStart = resolveDateParam(dateParam);
 
     const tasks = await Task.find({ assignedTo: user.id, date: dayStart })
       .populate("project", "name")

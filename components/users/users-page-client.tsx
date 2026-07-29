@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { PlusIcon, SearchIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { useUsers, useToggleUserStatus } from "@/hooks/use-users";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { ROLE_LABELS, type Role } from "@/lib/constants/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -31,9 +33,8 @@ const LIMIT = 10;
 
 export function UsersPageClient() {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { search, setSearch, debouncedSearch } = useDebouncedSearch();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editUser, setEditUser] = useState<{ _id: string; name: string; email: string; role: string } | null>(null);
@@ -41,15 +42,9 @@ export function UsersPageClient() {
 
   const toggleStatus = useToggleUserStatus();
 
-  // Debounce search input without mutating local variables after render.
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debounceTimeout = useCallback((value: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-      setPage(1);
-    }, 300);
-  }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, roleFilter]);
 
   const { data, isLoading } = useUsers({
     page,
@@ -82,7 +77,6 @@ export function UsersPageClient() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">User Management</h1>
         <Button onClick={openCreate}>
@@ -91,7 +85,6 @@ export function UsersPageClient() {
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
@@ -99,14 +92,12 @@ export function UsersPageClient() {
             placeholder="Search by name or email…"
             className="pl-8"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              debounceTimeout(e.target.value);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search users by name or email"
           />
         </div>
-        <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v ?? "all"); setPage(1); }}>
-          <SelectTrigger className="w-44">
+        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
+          <SelectTrigger className="w-full sm:w-44" aria-label="Filter by role">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
           <SelectContent>
@@ -117,7 +108,6 @@ export function UsersPageClient() {
         </Select>
       </div>
 
-      {/* Table */}
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -151,6 +141,7 @@ export function UsersPageClient() {
                     className="cursor-pointer"
                     onClick={() => handleToggleStatus(u._id, u.name)}
                     disabled={toggleStatus.isPending}
+                    aria-label={`Toggle status for ${u.name}`}
                   >
                     <Badge variant={u.isActive ? "default" : "destructive"}>
                       {u.isActive ? "Active" : "Inactive"}
@@ -183,22 +174,8 @@ export function UsersPageClient() {
         </Table>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-muted-foreground text-sm">
-            Page {page} of {totalPages}
-          </span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
-      {/* Dialogs */}
       <UserFormDialog open={formOpen} onOpenChange={setFormOpen} user={editUser} />
       <DeleteUserDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)} user={deleteTarget} />
     </div>
