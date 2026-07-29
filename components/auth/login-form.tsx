@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { CircleAlert, Loader2 } from "lucide-react";
+import { CircleAlert, EyeIcon, EyeOffIcon, Loader2 } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const router = useRouter();
   const destination = safeCallbackUrl(callbackUrl);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -74,14 +75,26 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
 
         <Field data-invalid={!!errors.password}>
           <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            aria-invalid={!!errors.password}
-            {...register("password")}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              aria-invalid={!!errors.password}
+              className="pr-10"
+              {...register("password")}
+            />
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 z-10 flex w-10 items-center justify-center rounded-r-lg transition-colors outline-none"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOffIcon className="size-4 shrink-0" /> : <EyeIcon className="size-4 shrink-0" />}
+            </button>
+          </div>
           <FieldError errors={errors.password ? [errors.password] : undefined} />
         </Field>
 

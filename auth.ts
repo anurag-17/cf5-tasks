@@ -5,7 +5,10 @@ import { connectDB } from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import { loginSchema } from "@/lib/validations/auth";
 
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: authSecret,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
