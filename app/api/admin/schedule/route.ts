@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
     if (!taskMap[empId]) taskMap[empId] = {};
     taskMap[empId][t.startTime] = {
       title: t.title,
-      project: (t.project as { name: string })?.name ?? "—",
-      assignedBy: (t.assignedBy as { name: string })?.name ?? "Self",
+      project: (t.project as unknown as { name: string })?.name ?? "—",
+      assignedBy: (t.assignedBy as unknown as { name: string })?.name ?? "Self",
     };
   }
 

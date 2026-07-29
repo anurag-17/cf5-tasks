@@ -3,7 +3,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import { requireRole } from "@/lib/session";
 import { Task } from "@/models";
 import { employeeTaskSchema } from "@/lib/validations/task";
-import { LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 
 export async function POST(req: NextRequest) {
   const user = await requireRole(["admin", "project_manager", "employee"]);
@@ -11,13 +10,6 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const parsed = employeeTaskSchema.parse(body);
-
-  if (parsed.startTime === LUNCH_START_TIME || parsed.endTime === LUNCH_END_TIME) {
-    return NextResponse.json(
-      { success: false, error: "Cannot create a task during the lunch break." },
-      { status: 400 },
-    );
-  }
 
   const dayStart = new Date(
     parsed.date.getFullYear(),

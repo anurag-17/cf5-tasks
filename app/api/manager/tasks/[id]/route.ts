@@ -3,7 +3,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import { requireRole } from "@/lib/session";
 import { Task } from "@/models";
 import { taskSchema } from "@/lib/validations/task";
-import { LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,13 +26,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json();
   const parsed = taskSchema.parse(body);
-
-  if (parsed.startTime === LUNCH_START_TIME || parsed.endTime === LUNCH_END_TIME) {
-    return NextResponse.json(
-      { success: false, error: "Cannot assign a task during the lunch break." },
-      { status: 400 },
-    );
-  }
 
   const dayStart = new Date(
     parsed.date.getFullYear(),

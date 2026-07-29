@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateUserInput, UpdateUserInput } from "@/lib/validations/user";
+import { fetchJSON } from "@/lib/api/fetch-json";
 
 interface UsersParams {
   page?: number;
@@ -24,13 +25,6 @@ interface UsersResponse {
   success: boolean;
   data: { users: UserData[]; total: number; page: number; totalPages: number };
   error?: string;
-}
-
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Something went wrong");
-  return json;
 }
 
 export function useUsers(params: UsersParams = {}) {

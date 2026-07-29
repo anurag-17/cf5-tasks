@@ -26,9 +26,10 @@ import {
 import { employeeTaskSchema } from "@/lib/validations/task";
 import type { EmployeeTaskInput } from "@/lib/validations/task";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-employee-tasks";
-import { TIME_SLOTS, LUNCH_START_TIME } from "@/lib/constants/office-hours";
+import { TIME_SLOTS } from "@/lib/constants/office-hours";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import { z } from "zod";
 
 interface TaskForEdit {
   _id: string;
@@ -58,6 +59,7 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
   const isEdit = !!task;
   const [projects, setProjects] = useState<Project[]>([]);
 
+  type TaskFormValues = z.input<typeof employeeTaskSchema>;
   const {
     register,
     handleSubmit,
@@ -65,7 +67,7 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<EmployeeTaskInput>({
+  } = useForm<TaskFormValues>({
     resolver: zodResolver(employeeTaskSchema),
   });
 
@@ -105,8 +107,9 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
     }
   }, [task, date, slotStart, slotEnd, reset]);
 
-  const onSubmit = async (data: EmployeeTaskInput) => {
+  const onSubmit = async (values: TaskFormValues) => {
     try {
+      const data = employeeTaskSchema.parse(values);
       if (isEdit) {
         await updateTask.mutateAsync({ id: task._id, data });
         toast.success("Task updated successfully.");
@@ -193,10 +196,9 @@ export function TaskFormDialog({ open, onOpenChange, task, date, slotStart, slot
               </SelectTrigger>
               <SelectContent>
                 {TIME_SLOTS.map((slot) => {
-                  const isLunch = slot.start === LUNCH_START_TIME;
                   return (
-                    <SelectItem key={slot.start} value={slot.start} disabled={isLunch}>
-                      {slot.start} – {slot.end}{isLunch ? " (Lunch)" : ""}
+                    <SelectItem key={slot.start} value={slot.start}>
+                      {slot.start} – {slot.end}
                     </SelectItem>
                   );
                 })}

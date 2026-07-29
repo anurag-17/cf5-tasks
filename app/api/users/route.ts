@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
   const hashedPassword = await bcrypt.hash(parsed.password, 10);
   const user = await User.create({ ...parsed, password: hashedPassword });
 
-  const { password: _, ...safeUser } = user.toObject();
+  const safeUser = { ...(user.toObject() as unknown as Record<string, unknown>) };
+  delete safeUser.password;
   return NextResponse.json({ success: true, data: safeUser }, { status: 201 });
 }

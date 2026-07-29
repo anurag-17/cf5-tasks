@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -23,11 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { z } from "zod";
 import { taskSchema } from "@/lib/validations/task";
 import type { TaskInput } from "@/lib/validations/task";
 import { useAssignTask, useEditAssignedTask, useEmployees } from "@/hooks/use-manager";
 import { useProjects } from "@/hooks/use-projects";
-import { TIME_SLOTS, LUNCH_START_TIME } from "@/lib/constants/office-hours";
+import { TIME_SLOTS } from "@/lib/constants/office-hours";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
 
@@ -67,6 +68,7 @@ export function AssignTaskDialog({
   const employees = employeesData?.data ?? [];
   const projects = (projectsData?.data?.projects ?? []) as Array<{ _id: string; name: string }>;
 
+  type TaskFormValues = z.input<typeof taskSchema>;
   const {
     register,
     handleSubmit,
@@ -74,7 +76,7 @@ export function AssignTaskDialog({
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<TaskInput>({
+  } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
   });
 
@@ -105,8 +107,9 @@ export function AssignTaskDialog({
     }
   }, [task, date, slotStart, slotEnd, employeeId, reset]);
 
-  const onSubmit = async (data: TaskInput) => {
+  const onSubmit = async (values: TaskFormValues) => {
     try {
+      const data = taskSchema.parse(values);
       if (isEdit) {
         await editTask.mutateAsync({ id: task._id, data });
         toast.success("Task updated.");
@@ -218,14 +221,11 @@ export function AssignTaskDialog({
                   <SelectValue placeholder="Select slot" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIME_SLOTS.map((slot) => {
-                    const isLunch = slot.start === LUNCH_START_TIME;
-                    return (
-                      <SelectItem key={slot.start} value={slot.start} disabled={isLunch}>
-                        {slot.start} – {slot.end}{isLunch ? " (Lunch)" : ""}
-                      </SelectItem>
-                    );
-                  })}
+                  {TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot.start} value={slot.start}>
+                      {slot.start} – {slot.end}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {errors.endTime && <p className="text-destructive text-xs">{errors.endTime.message}</p>}

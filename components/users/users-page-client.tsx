@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import { PlusIcon, SearchIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { useUsers, useToggleUserStatus } from "@/hooks/use-users";
@@ -41,16 +41,14 @@ export function UsersPageClient() {
 
   const toggleStatus = useToggleUserStatus();
 
-  // Debounce search input
-  const debounceTimeout = useMemo(() => {
-    let timeout: NodeJS.Timeout;
-    return (value: string) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        setDebouncedSearch(value);
-        setPage(1);
-      }, 300);
-    };
+  // Debounce search input without mutating local variables after render.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimeout = useCallback((value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 300);
   }, []);
 
   const { data, isLoading } = useUsers({

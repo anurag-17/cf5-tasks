@@ -2,19 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateProjectInput, UpdateProjectInput } from "@/lib/validations/project";
+import { fetchJSON } from "@/lib/api/fetch-json";
 
 interface ProjectsParams {
   page?: number;
   limit?: number;
   search?: string;
   archived?: string;
-}
-
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Something went wrong");
-  return json;
 }
 
 export function useProjects(params: ProjectsParams = {}) {

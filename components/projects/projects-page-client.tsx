@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useRef, useCallback } from "react";
 import { PlusIcon, SearchIcon, PencilIcon, Trash2Icon, ArchiveIcon, ArchiveRestoreIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useProjects, useToggleArchiveProject } from "@/hooks/use-projects";
@@ -49,15 +49,13 @@ export function ProjectsPageClient() {
 
   const toggleArchive = useToggleArchiveProject();
 
-  const debounceTimeout = useMemo(() => {
-    let timeout: NodeJS.Timeout;
-    return (value: string) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        setDebouncedSearch(value);
-        setPage(1);
-      }, 300);
-    };
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceTimeout = useCallback((value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 300);
   }, []);
 
   const { data, isLoading } = useProjects({

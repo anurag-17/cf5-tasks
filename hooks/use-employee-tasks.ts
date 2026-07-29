@@ -2,13 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EmployeeTaskInput, UpdateEmployeeTaskInput } from "@/lib/validations/task";
-
-async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Something went wrong");
-  return json;
-}
+import { fetchJSON } from "@/lib/api/fetch-json";
 
 export function useSchedule(date: string) {
   return useQuery({
