@@ -26,29 +26,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        try {
+          const parsed = loginSchema.safeParse(credentials);
+          if (!parsed.success) return null;
 
-        // Query casters aren't guaranteed to apply the schema's `lowercase`
-        // option to filter values, so normalize explicitly rather than rely
-        // on it for a security-relevant lookup.
-        const email = parsed.data.email.trim().toLowerCase();
+          const email = parsed.data.email.trim().toLowerCase();
 
-        await connectDB();
-        const user = await User.findOne({ email, isActive: true }).select("+password");
-        // Same "no such user" vs "wrong password" response either way, so a
-        // failed login never reveals which part was wrong.
-        if (!user) return null;
+          await connectDB();
+          const user = await User.findOne({ email, isActive: true }).select("+password");
+          if (!user) return null;
 
-        const passwordMatches = await bcrypt.compare(parsed.data.password, user.password);
-        if (!passwordMatches) return null;
+          const passwordMatches = await bcrypt.compare(parsed.data.password, user.password);
+          if (!passwordMatches) return null;
 
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
+          return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error("[auth] authorize failed:", error);
+          return null;
+        }
       },
     }),
   ],
@@ -57,23 +57,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id as string;
         token.role = user.role;
+        token.name = user.name;
+        token.email = user.email;
         delete token.error;
+        return token;
       }
 
-      // Re-validate against DB on every request so deactivated users and
+      // Re-validate against DB on subsequent requests so deactivated users and
       // role changes take effect immediately instead of waiting for JWT expiry.
       if (token.id) {
-        await connectDB();
-        const dbUser = await User.findById(token.id).select("role isActive name email").lean();
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id).select("role isActive name email").lean();
 
-        if (!dbUser || !dbUser.isActive) {
-          return { ...token, error: "SessionRevoked" as const, id: "", role: "employee" };
+          if (!dbUser || !dbUser.isActive) {
+            return { ...token, error: "SessionRevoked" as const, id: "", role: "employee" };
+          }
+
+          token.role = dbUser.role;
+          token.name = dbUser.name;
+          token.email = dbUser.email;
+          delete token.error;
+        } catch (error) {
+          console.error("[auth] jwt revalidation failed:", error);
         }
-
-        token.role = dbUser.role;
-        token.name = dbUser.name;
-        token.email = dbUser.email;
-        delete token.error;
       }
 
       return token;

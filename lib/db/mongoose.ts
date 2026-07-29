@@ -15,7 +15,10 @@ export async function connectDB() {
       throw new Error("Missing MONGODB_URI environment variable");
     }
 
-    cached.promise = mongoose.connect(uri, { bufferCommands: false });
+    cached.promise = mongoose.connect(uri, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 10_000,
+    });
   }
 
   try {
