@@ -1,7 +1,11 @@
 import { requireRole } from "@/lib/session";
-import { AuthenticatedPlaceholder } from "@/components/auth/authenticated-placeholder";
+import { AdminScheduleClient } from "@/components/admin/admin-schedule-client";
 
 export default async function AdminPage() {
-  const user = await requireRole("admin");
-  return <AuthenticatedPlaceholder title="Admin" user={user} />;
+  await requireRole("admin");
+  return (
+    <div className="mx-auto max-w-[1400px] px-4 py-6">
+      <AdminScheduleClient />
+    </div>
+  );
 }
