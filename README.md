@@ -29,6 +29,54 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Project architecture
+
+This is an Office Task Management System. The stack: Next.js 16 (App Router), TypeScript,
+Tailwind CSS v4, shadcn/ui, MongoDB + Mongoose, React Hook Form + Zod, TanStack Query, and
+NextAuth v5 (Credentials).
+
+> **Next.js 16 note**: `middleware.ts` was renamed to [`proxy.ts`](proxy.ts) — see
+> `node_modules/next/dist/docs` before relying on older conventions.
+
+```
+app/                      App Router routes only
+  api/auth/[...nextauth]/  NextAuth route handler
+components/
+  ui/                      shadcn/ui primitives (generated — prefer `npx shadcn add` over hand edits)
+  providers/               App-wide client providers (Query, Session, Theme, Tooltip, Toaster)
+lib/
+  db/mongoose.ts           Cached Mongoose connection singleton
+  constants/                Roles, task status/priority, office hours — single source of truth
+  validations/              Zod schemas, shared by forms (client) and API routes (server)
+  permissions.ts            Role → permission checks
+  utils.ts                  shadcn `cn()` helper
+models/                    Mongoose schemas: User, Department, Project, Task, Notification
+types/                     Ambient/module-augmentation types (next-auth.d.ts, global.d.ts)
+hooks/                     Shared React hooks (TanStack Query hooks live here once added)
+auth.ts                    NextAuth v5 config (handlers, auth, signIn, signOut)
+proxy.ts                   Optimistic auth redirect for /admin, /manager, /employee
+```
+
+Roles (`lib/constants/roles.ts`): `admin`, `project_manager`, `team_lead`, `employee`.
+Designation (job title, mostly for employees): Developer, Designer, SEO, Content Writer, HR, BDE, QA.
+
+### Environment variables
+
+Copy `.env.example` to `.env.local` and fill in real values (`.env.local` is gitignored):
+
+- `MONGODB_URI` — MongoDB connection string
+- `AUTH_SECRET` — generate with `npx auth secret`
+- `AUTH_URL` — app base URL (used for auth callbacks)
+
+### Scripts
+
+- `npm run dev` / `build` / `start`
+- `npm run lint` — ESLint
+- `npm run typecheck` — `tsc --noEmit`
+- `npm run format` / `format:check` — Prettier (with `prettier-plugin-tailwindcss`)
+
+No feature pages/API routes exist yet — this setup is architecture only.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
