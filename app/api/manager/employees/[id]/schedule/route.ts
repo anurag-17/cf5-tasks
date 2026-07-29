@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task } from "@/models";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
-  await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole("project_manager");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id: employeeId } = await params;

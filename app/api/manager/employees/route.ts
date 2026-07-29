@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { User } from "@/models";
 
 export async function GET() {
-  await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole("project_manager");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const employees = await User.find({ role: "employee", isActive: true })

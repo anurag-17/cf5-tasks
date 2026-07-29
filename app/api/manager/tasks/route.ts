@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task } from "@/models";
 import { taskSchema } from "@/lib/validations/task";
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole("project_manager");
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const body = await req.json();

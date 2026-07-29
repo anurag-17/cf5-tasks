@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { User } from "@/models";
 import { updateUserSchema } from "@/lib/validations/user";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id } = await params;
@@ -21,7 +22,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id } = await params;
@@ -53,7 +55,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id } = await params;

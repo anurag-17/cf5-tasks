@@ -47,15 +47,12 @@ export function roleHomePath(role: Role): string {
   return ROLE_HOME[role];
 }
 
-// Which roles may access each protected route prefix. Admin is treated as a
-// superset that can view every role's area; Project Manager can also see the
-// Employee area; Employee is restricted to its own. Consulted by both
-// proxy.ts (optimistic redirect) and the page-level `requireRole` guard
-// (the authoritative check) — see lib/session.ts.
+// Strict role isolation: each role may only access its own module prefix.
+// Consulted by proxy.ts (optimistic redirect) and layout-level requireRole.
 const ROUTE_ACCESS: Record<string, readonly Role[]> = {
   "/admin": ["admin"],
-  "/manager": ["admin", "project_manager"],
-  "/employee": ["admin", "project_manager", "employee"],
+  "/manager": ["project_manager"],
+  "/employee": ["employee"],
 };
 
 export function rolesAllowedForRoute(pathname: string): readonly Role[] | null {

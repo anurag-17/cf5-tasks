@@ -1,7 +1,5 @@
-import { requireRole } from "@/lib/session";
-import { AuthenticatedPlaceholder } from "@/components/auth/authenticated-placeholder";
+import { redirect } from "next/navigation";
 
-export default async function ManagerPage() {
-  const user = await requireRole(["admin", "project_manager"]);
-  return <AuthenticatedPlaceholder title="Project Manager" user={user} />;
+export default function ManagerPage() {
+  redirect("/manager/tasks");
 }

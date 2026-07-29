@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task, User } from "@/models";
 
 export async function GET(req: NextRequest) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const dateParam = req.nextUrl.searchParams.get("date");

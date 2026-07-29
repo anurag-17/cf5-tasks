@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task } from "@/models";
 import { taskSchema } from "@/lib/validations/task";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole("project_manager");
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const { id } = await params;
@@ -17,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: false, error: "Task not found." }, { status: 404 });
   }
 
-  if (task.assignedBy?.toString() !== user.id && user.role !== "admin") {
+  if (task.assignedBy?.toString() !== user.id) {
     return NextResponse.json(
       { success: false, error: "You can only edit tasks you assigned." },
       { status: 403 },

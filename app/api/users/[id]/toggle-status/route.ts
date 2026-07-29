@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { User } from "@/models";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(_req: NextRequest, { params }: Params) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id } = await params;

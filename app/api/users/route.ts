@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { User } from "@/models";
 import { createUserSchema, usersQuerySchema } from "@/lib/validations/user";
 
 export async function GET(req: NextRequest) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const params = Object.fromEntries(req.nextUrl.searchParams);
@@ -35,7 +36,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  await requireRole("admin");
+  const auth = await requireApiRole("admin");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const body = await req.json();

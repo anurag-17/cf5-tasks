@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task } from "@/models";
 import { updateEmployeeTaskSchema } from "@/lib/validations/task";
 import { LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
@@ -8,7 +8,9 @@ import { LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const user = await requireRole(["admin", "project_manager", "employee"]);
+  const auth = await requireApiRole("employee");
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const { id } = await params;
@@ -80,7 +82,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const user = await requireRole(["admin", "project_manager", "employee"]);
+  const auth = await requireApiRole("employee");
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const { id } = await params;

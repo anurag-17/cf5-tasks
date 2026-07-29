@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Project } from "@/models";
 import { updateProjectSchema } from "@/lib/validations/project";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole(["admin", "project_manager", "employee"]);
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const { id } = await params;
@@ -20,7 +21,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole(["admin", "project_manager"]);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const { id } = await params;
@@ -56,7 +59,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole(["admin", "project_manager"]);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const { id } = await params;

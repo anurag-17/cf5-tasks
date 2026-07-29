@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Task } from "@/models";
 
 const querySchema = z.object({
@@ -12,7 +12,8 @@ const querySchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole("project_manager");
+  if (!auth.ok) return auth.response;
   await connectDB();
 
   const params = Object.fromEntries(req.nextUrl.searchParams);

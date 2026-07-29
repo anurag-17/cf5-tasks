@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireRole } from "@/lib/session";
+import { requireApiRole } from "@/lib/api-auth";
 import { Project } from "@/models";
 import { createProjectSchema, projectsQuerySchema } from "@/lib/validations/project";
 
 export async function GET(req: NextRequest) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole(["admin", "project_manager", "employee"]);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const params = Object.fromEntries(req.nextUrl.searchParams);
@@ -42,7 +44,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole(["admin", "project_manager"]);
+  const auth = await requireApiRole(["admin", "project_manager"]);
+  if (!auth.ok) return auth.response;
+  const user = auth.user;
   await connectDB();
 
   const body = await req.json();
