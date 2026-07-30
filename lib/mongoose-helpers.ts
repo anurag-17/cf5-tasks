@@ -16,3 +16,11 @@ export function populatedName(
   }
   return fallback;
 }
+
+/** Read a populated ref's id, or stringify a raw ObjectId/string. */
+export function populatedId(value: unknown): string {
+  if (value && typeof value === "object" && "_id" in value) {
+    return String((value as { _id: unknown })._id);
+  }
+  return String(value ?? "");
+}

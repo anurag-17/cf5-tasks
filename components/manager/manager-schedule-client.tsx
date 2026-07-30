@@ -2,8 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { CalendarIcon, PlusIcon, UtensilsIcon } from "lucide-react";
-import { useAdminSchedule } from "@/hooks/use-admin-schedule";
-import { useEmployees } from "@/hooks/use-manager";
+import {
+  useEmployees,
+  useManagerSchedule,
+  type ManagerScheduleRow,
+  type ManagerScheduleSlot,
+} from "@/hooks/use-manager";
 import { useProjects } from "@/hooks/use-projects";
 import { TIME_SLOTS, LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 import { todayDateInputValue } from "@/lib/dates";
@@ -27,7 +31,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { AssignTaskDialog } from "@/components/manager/assign-task-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { AssignTaskDialog } from "./assign-task-dialog";
 import { FreeSlotAssign } from "@/components/schedule/free-slot-assign";
 import {
   ScheduleTaskDetailDialog,
@@ -42,24 +54,9 @@ const ALL_DISPLAY_SLOTS = [
 
 const BOOKABLE_SLOT_COUNT = TIME_SLOTS.length;
 
-type SlotTask = {
-  title: string;
-  description: string;
-  project: string;
-  projectId: string;
-  assignedBy: string;
-  endTime: string;
-};
-
-type ScheduleRow = {
-  _id: string;
-  name: string;
-  slots: Record<string, SlotTask>;
-};
-
 function toTaskSelection(
-  row: ScheduleRow,
-  task: SlotTask,
+  row: ManagerScheduleRow,
+  task: ManagerScheduleSlot,
   slotStart: string,
   date: string,
 ): ScheduleTaskSelection {
@@ -110,11 +107,11 @@ function EmployeeScheduleDrawer({
   onTaskClick,
   onAssignSlot,
 }: {
-  employee: ScheduleRow | null;
+  employee: ManagerScheduleRow | null;
   date: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTaskClick: (task: SlotTask, slotStart: string) => void;
+  onTaskClick: (task: ManagerScheduleSlot, slotStart: string) => void;
   onAssignSlot: (slot: { start: string; end: string }) => void;
 }) {
   const summary = useMemo(() => {
@@ -213,7 +210,7 @@ function EmployeeScheduleDrawer({
   );
 }
 
-function TaskChip({ task, onClick }: { task: SlotTask; onClick: () => void }) {
+function TaskChip({ task, onClick }: { task: ManagerScheduleSlot; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -228,12 +225,12 @@ function TaskChip({ task, onClick }: { task: SlotTask; onClick: () => void }) {
   );
 }
 
-export function AdminScheduleClient() {
+export function ManagerScheduleClient() {
   const [selectedDate, setSelectedDate] = useState(todayDateInputValue);
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [selectedTask, setSelectedTask] = useState<ScheduleTaskSelection | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<ScheduleRow | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<ManagerScheduleRow | null>(null);
   const [assignTarget, setAssignTarget] = useState<{
     employeeId: string;
     slotStart: string;
@@ -246,13 +243,13 @@ export function AdminScheduleClient() {
   const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
   const projects = projectsData?.data?.projects ?? [];
 
-  const { data, isLoading } = useAdminSchedule({
+  const { data, isLoading } = useManagerSchedule({
     date: selectedDate,
     employee: employeeFilter || undefined,
     project: projectFilter || undefined,
   });
 
-  const rows = (data?.data ?? []) as ScheduleRow[];
+  const rows = data?.data ?? [];
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-6">
@@ -260,18 +257,18 @@ export function AdminScheduleClient() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Employee Schedule</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            View and manage team schedules and availability.
+            Track team schedules and availability.
           </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex items-center gap-2">
             <CalendarIcon className="text-muted-foreground size-4" aria-hidden />
-            <label htmlFor="admin-schedule-date" className="sr-only">
+            <label htmlFor="manager-team-schedule-date" className="sr-only">
               Select date
             </label>
             <input
-              id="admin-schedule-date"
+              id="manager-team-schedule-date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -319,18 +316,12 @@ export function AdminScheduleClient() {
       <div className="min-h-0 flex-1">
         {isLoading ? (
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-28 w-full" />
-              ))}
-            </div>
             <Skeleton className="h-64 w-full" />
           </div>
         ) : rows.length === 0 ? (
           <div className="text-muted-foreground py-12 text-center">No employees found.</div>
         ) : (
           <>
-            {/* Mobile: stacked employee cards */}
             <div className="space-y-3 md:hidden">
               {rows.map((row) => (
                 <Card key={row._id} className="shadow-sm">
@@ -387,46 +378,45 @@ export function AdminScheduleClient() {
               ))}
             </div>
 
-            {/* Desktop grid */}
             <div className="bg-card hidden h-full min-h-0 w-full max-w-full flex-col overflow-hidden rounded-xl border shadow-sm md:flex">
-              <div className="min-h-0 w-full max-w-full flex-1 overflow-auto">
-                <table className="h-full w-full min-w-[1320px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="bg-muted sticky top-0 left-0 z-[5] min-w-[180px] px-3 py-4 text-left text-sm font-semibold tracking-wide uppercase shadow-[1px_0_0_0_var(--border)]">
+              <div className="min-h-0 w-full max-w-full flex-1 overflow-auto [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:overflow-visible">
+                <Table className="h-full min-w-[1320px] border-collapse text-sm">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="bg-muted sticky top-0 left-0 z-[5] h-auto min-w-[180px] px-3 py-4 text-left text-sm font-semibold tracking-wide uppercase shadow-[1px_0_0_0_var(--border)]">
                         Employee
-                      </th>
+                      </TableHead>
                       {ALL_DISPLAY_SLOTS.map((slot) => {
                         const isLunch = slot.start === LUNCH_START_TIME;
                         return (
-                          <th
+                          <TableHead
                             key={slot.start}
                             className={cn(
-                              "bg-muted sticky top-0 z-[3] min-w-[140px] border-l px-2 py-4 text-center text-xs font-medium",
+                              "bg-muted sticky top-0 z-[3] h-auto min-w-[140px] border-l px-2 py-4 text-center text-xs font-medium whitespace-normal",
                               isLunch && "text-muted-foreground",
                             )}
                           >
                             {formatTime12h(slot.start).replace(" AM", "").replace(" PM", "")}–
                             {formatTime12h(slot.end).replace(" AM", "").replace(" PM", "")}
-                          </th>
+                          </TableHead>
                         );
                       })}
-                    </tr>
-                  </thead>
-                  <tbody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {rows.map((row, rowIndex) => {
                       const isEvenRow = rowIndex % 2 === 1;
                       return (
-                        <tr
+                        <TableRow
                           key={row._id}
                           className={cn(
-                            "group/row hover:bg-muted/30 border-b transition-colors last:border-0",
+                            "group/row hover:bg-muted/30 border-b last:border-0",
                             isEvenRow && "bg-muted/30",
                           )}
                         >
-                          <td
+                          <TableCell
                             className={cn(
-                              "sticky left-0 z-[2] px-3 py-4 shadow-[1px_0_0_0_var(--border)] group-hover/row:bg-muted",
+                              "sticky left-0 z-[2] px-3 py-4 whitespace-normal shadow-[1px_0_0_0_var(--border)] group-hover/row:bg-muted",
                               isEvenRow ? "bg-muted" : "bg-card",
                             )}
                           >
@@ -434,16 +424,16 @@ export function AdminScheduleClient() {
                               name={row.name}
                               onClick={() => setSelectedEmployee(row)}
                             />
-                          </td>
+                          </TableCell>
                           {ALL_DISPLAY_SLOTS.map((slot) => {
                             const isLunch = slot.start === LUNCH_START_TIME;
                             const task = row.slots[slot.start];
 
                             if (isLunch) {
                               return (
-                                <td
+                                <TableCell
                                   key={slot.start}
-                                  className="bg-muted/30 border-l  px-1 py-4 text-center"
+                                  className="bg-muted/30 border-l px-1 py-4 text-center"
                                 >
                                   <span className="text-muted-foreground inline-flex items-center justify-center">
                                     <UtensilsIcon
@@ -451,14 +441,14 @@ export function AdminScheduleClient() {
                                       aria-label="Lunch"
                                     />
                                   </span>
-                                </td>
+                                </TableCell>
                               );
                             }
 
                             return (
-                              <td
+                              <TableCell
                                 key={slot.start}
-                                className="min-w-[140px] border-l px-3 py-4 text-left align-middle"
+                                className="min-w-[140px] border-l px-3 py-4 text-left align-middle whitespace-normal"
                               >
                                 {task ? (
                                   <TaskChip
@@ -480,20 +470,20 @@ export function AdminScheduleClient() {
                                     }
                                   />
                                 )}
-                              </td>
+                              </TableCell>
                             );
                           })}
-                        </tr>
+                        </TableRow>
                       );
                     })}
-                    <tr aria-hidden className="h-full">
-                      <td className="bg-card sticky left-0 z-[2] shadow-[1px_0_0_0_var(--border)]" />
+                    <TableRow aria-hidden className="h-full hover:bg-transparent">
+                      <TableCell className="bg-card sticky left-0 z-[2] shadow-[1px_0_0_0_var(--border)]" />
                       {ALL_DISPLAY_SLOTS.map((slot) => (
-                        <td key={slot.start} className="border-l" />
+                        <TableCell key={slot.start} className="border-l" />
                       ))}
-                    </tr>
-                  </tbody>
-                </table>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </>

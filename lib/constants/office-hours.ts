@@ -38,3 +38,22 @@ export const TIME_SLOTS = TASK_START_TIMES.map((start, i) => ({
   start,
   end: TASK_END_TIMES[i],
 }));
+
+/** Next bookable hourly slot after `startTime`, or null at end of day. */
+export function getNextTimeSlot(startTime: string): { start: string; end: string } | null {
+  const index = TIME_SLOTS.findIndex((slot) => slot.start === startTime);
+  if (index < 0 || index >= TIME_SLOTS.length - 1) return null;
+  return TIME_SLOTS[index + 1];
+}
+
+/** Next slot only if it is not already occupied (lunch is already outside TIME_SLOTS). */
+export function getNextFreeSlot(
+  startTime: string,
+  occupiedStarts: Iterable<string>,
+): { start: string; end: string } | null {
+  const next = getNextTimeSlot(startTime);
+  if (!next) return null;
+  const occupied = occupiedStarts instanceof Set ? occupiedStarts : new Set(occupiedStarts);
+  if (occupied.has(next.start)) return null;
+  return next;
+}

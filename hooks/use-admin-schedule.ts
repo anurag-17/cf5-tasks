@@ -6,6 +6,7 @@ interface SlotData {
   title: string;
   description: string;
   project: string;
+  projectId: string;
   assignedBy: string;
   endTime: string;
 }

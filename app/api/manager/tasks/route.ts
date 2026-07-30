@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireManagerApi } from "@/lib/api-auth";
+import { requireApiPermission } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
 import { toUtcDayStart } from "@/lib/dates";
 import { Task } from "@/models";
@@ -8,7 +8,7 @@ import { taskSchema } from "@/lib/validations/task";
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireManagerApi();
+    const auth = await requireApiPermission("assignTasks");
     if (!auth.ok) return auth.response;
     const user = auth.user;
     await connectDB();

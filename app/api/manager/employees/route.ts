@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireManagerApi } from "@/lib/api-auth";
+import { requireApiAccess } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
+import { isManagerial } from "@/lib/permissions";
 import { User } from "@/models";
 
 export async function GET() {
   try {
-    const auth = await requireManagerApi();
+    const auth = await requireApiAccess(isManagerial);
     if (!auth.ok) return auth.response;
     await connectDB();
 

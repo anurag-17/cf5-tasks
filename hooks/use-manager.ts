@@ -4,12 +4,45 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TaskInput } from "@/lib/validations/task";
 import { fetchJSON } from "@/lib/api/fetch-json";
 
+export interface ManagerScheduleSlot {
+  title: string;
+  description: string;
+  project: string;
+  projectId: string;
+  assignedBy: string;
+  endTime: string;
+}
+
+export interface ManagerScheduleRow {
+  _id: string;
+  name: string;
+  slots: Record<string, ManagerScheduleSlot>;
+}
+
 export function useEmployees() {
   return useQuery({
     queryKey: ["manager-employees"],
     queryFn: () =>
       fetchJSON<{ success: boolean; data: Array<{ _id: string; name: string; email: string }> }>(
         "/api/manager/employees",
+      ),
+  });
+}
+
+export function useManagerSchedule(params: {
+  date: string;
+  employee?: string;
+  project?: string;
+}) {
+  const searchParams = new URLSearchParams({ date: params.date });
+  if (params.employee) searchParams.set("employee", params.employee);
+  if (params.project) searchParams.set("project", params.project);
+
+  return useQuery({
+    queryKey: ["manager-schedule", params],
+    queryFn: () =>
+      fetchJSON<{ success: boolean; data: ManagerScheduleRow[] }>(
+        `/api/manager/schedule?${searchParams.toString()}`,
       ),
   });
 }
@@ -78,6 +111,8 @@ export function useAssignTask() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employee-schedule"] });
+      qc.invalidateQueries({ queryKey: ["manager-schedule"] });
+      qc.invalidateQueries({ queryKey: ["admin-schedule"] });
       qc.invalidateQueries({ queryKey: ["project-tasks"] });
     },
   });
@@ -94,6 +129,8 @@ export function useEditAssignedTask() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employee-schedule"] });
+      qc.invalidateQueries({ queryKey: ["manager-schedule"] });
+      qc.invalidateQueries({ queryKey: ["admin-schedule"] });
       qc.invalidateQueries({ queryKey: ["project-tasks"] });
     },
   });
@@ -105,6 +142,8 @@ export function useDeleteAssignedTask() {
     mutationFn: (id: string) => fetchJSON(`/api/manager/tasks/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["employee-schedule"] });
+      qc.invalidateQueries({ queryKey: ["manager-schedule"] });
+      qc.invalidateQueries({ queryKey: ["admin-schedule"] });
       qc.invalidateQueries({ queryKey: ["project-tasks"] });
     },
   });

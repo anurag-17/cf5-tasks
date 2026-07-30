@@ -31,6 +31,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { TIME_SLOTS } from "@/lib/constants/office-hours";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import { formatTime12h } from "@/lib/format";
 
 interface TaskForEdit {
   _id: string;
@@ -63,6 +64,8 @@ export function AssignTaskDialog({
   slotEnd,
 }: AssignTaskDialogProps) {
   const isEdit = !!task;
+  const lockContext = !isEdit && !!employeeId && !!slotStart;
+
   const { data: employeesData } = useEmployees();
   const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
   const employees = employeesData?.data ?? [];
@@ -126,6 +129,9 @@ export function AssignTaskDialog({
   const description = watch("description") ?? "";
   const wordCount = countWords(description);
   const startTime = watch("startTime");
+  const assignedTo = watch("assignedTo");
+  const lockedEmployee = employees.find((e) => e._id === assignedTo);
+  const lockedSlot = TIME_SLOTS.find((s) => s.start === startTime);
 
   const handleSlotChange = (start: string) => {
     const slot = TIME_SLOTS.find((s) => s.start === start);
@@ -137,7 +143,7 @@ export function AssignTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Assigned Task" : "Assign Task"}</DialogTitle>
           <DialogDescription>
@@ -147,24 +153,35 @@ export function AssignTaskDialog({
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label>Employee</Label>
-            <Select
-              value={watch("assignedTo") || null}
-              onValueChange={(v) => setValue("assignedTo", v ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select employee">
-                  {employees.find((e) => e._id === watch("assignedTo"))?.name ?? null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((e) => (
-                  <SelectItem key={e._id} value={e._id}>
-                    {e.name} ({e.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.assignedTo && <p className="text-destructive text-xs">{errors.assignedTo.message}</p>}
+            {lockContext ? (
+              <Input
+                value={lockedEmployee ? `${lockedEmployee.name} (${lockedEmployee.email})` : ""}
+                readOnly
+                disabled
+                aria-label="Employee (locked)"
+              />
+            ) : (
+              <Select
+                value={assignedTo || null}
+                onValueChange={(v) => setValue("assignedTo", v ?? "")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select employee">
+                    {employees.find((e) => e._id === assignedTo)?.name ?? null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((e) => (
+                    <SelectItem key={e._id} value={e._id}>
+                      {e.name} ({e.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {errors.assignedTo && (
+              <p className="text-destructive text-xs">{errors.assignedTo.message}</p>
+            )}
           </div>
 
           <div className="grid gap-1.5">
@@ -191,7 +208,12 @@ export function AssignTaskDialog({
 
           <div className="grid gap-1.5">
             <Label htmlFor="assign-title">Title</Label>
-            <Input id="assign-title" placeholder="Task title" {...register("title")} aria-invalid={!!errors.title} />
+            <Input
+              id="assign-title"
+              placeholder="Task title"
+              {...register("title")}
+              aria-invalid={!!errors.title}
+            />
             {errors.title && <p className="text-destructive text-xs">{errors.title.message}</p>}
           </div>
 
@@ -205,37 +227,61 @@ export function AssignTaskDialog({
               aria-invalid={!!errors.description}
             />
             <div className="flex justify-between">
-              {errors.description && <p className="text-destructive text-xs">{errors.description.message}</p>}
-              <p className={`text-xs ml-auto ${wordCount < TASK_DESCRIPTION_MIN_WORDS || wordCount > TASK_DESCRIPTION_MAX_WORDS ? "text-destructive" : "text-muted-foreground"}`}>
+              {errors.description && (
+                <p className="text-destructive text-xs">{errors.description.message}</p>
+              )}
+              <p
+                className={`ml-auto text-xs ${wordCount < TASK_DESCRIPTION_MIN_WORDS || wordCount > TASK_DESCRIPTION_MAX_WORDS ? "text-destructive" : "text-muted-foreground"}`}
+              >
                 {wordCount} / {TASK_DESCRIPTION_MIN_WORDS}–{TASK_DESCRIPTION_MAX_WORDS} words
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="assign-date">Date</Label>
-              <Input id="assign-date" type="date" {...register("date", { valueAsDate: true })} aria-invalid={!!errors.date} />
-              {errors.date && <p className="text-destructive text-xs">{errors.date.message}</p>}
-            </div>
+          <div className={lockContext ? "grid gap-1.5" : "grid grid-cols-2 gap-3"}>
+            {!lockContext ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor="assign-date">Date</Label>
+                <Input
+                  id="assign-date"
+                  type="date"
+                  {...register("date", { valueAsDate: true })}
+                  aria-invalid={!!errors.date}
+                />
+                {errors.date && <p className="text-destructive text-xs">{errors.date.message}</p>}
+              </div>
+            ) : null}
             <div className="grid gap-1.5">
               <Label>Time Slot</Label>
-              <Select value={startTime ?? null} onValueChange={(v) => handleSlotChange(v ?? "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select slot">
-                    {TIME_SLOTS.find((s) => s.start === startTime)
-                      ? `${startTime} – ${TIME_SLOTS.find((s) => s.start === startTime)?.end}`
-                      : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {TIME_SLOTS.map((slot) => (
-                    <SelectItem key={slot.start} value={slot.start}>
-                      {slot.start} – {slot.end}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockContext ? (
+                <Input
+                  value={
+                    lockedSlot
+                      ? `${formatTime12h(lockedSlot.start)} – ${formatTime12h(lockedSlot.end)}`
+                      : ""
+                  }
+                  readOnly
+                  disabled
+                  aria-label="Time slot (locked)"
+                />
+              ) : (
+                <Select value={startTime ?? null} onValueChange={(v) => handleSlotChange(v ?? "")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select slot">
+                      {TIME_SLOTS.find((s) => s.start === startTime)
+                        ? `${startTime} – ${TIME_SLOTS.find((s) => s.start === startTime)?.end}`
+                        : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_SLOTS.map((slot) => (
+                      <SelectItem key={slot.start} value={slot.start}>
+                        {slot.start} – {slot.end}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {errors.endTime && <p className="text-destructive text-xs">{errors.endTime.message}</p>}
             </div>
           </div>

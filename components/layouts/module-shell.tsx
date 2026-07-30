@@ -2,6 +2,7 @@
 
 import { LogOutIcon } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ModuleNavLink } from "@/components/layouts/module-nav-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -52,6 +53,12 @@ export function ModuleShell({
 }) {
   const displayName = user.name ?? user.email ?? "User";
 
+  const pathname = usePathname();
+  const currentScreenLabel =
+    navItems.find((item) => item.href === pathname)?.label ??
+    navItems.find((item) => pathname.startsWith(`${item.href}/`))?.label ??
+    moduleLabel;
+
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <Sidebar collapsible="icon">
@@ -64,9 +71,7 @@ export function ModuleShell({
                 </span>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{APP_NAME}</span>
-                  <span className="text-sidebar-foreground/60 truncate text-xs">
-                    {moduleLabel}
-                  </span>
+                  <span className="text-sidebar-foreground/60 truncate text-xs">{moduleLabel}</span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -126,6 +131,7 @@ export function ModuleShell({
       <SidebarInset className="min-w-0 overflow-x-hidden">
         <header className="bg-card/80 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
           <SidebarTrigger />
+          <h1 className="truncate text-sm font-semibold">{currentScreenLabel}</h1>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
             <Avatar size="sm">
@@ -136,7 +142,9 @@ export function ModuleShell({
           </div>
         </header>
 
-        <div className="mx-auto w-full min-w-0 max-w-[1400px] flex-1 px-4 py-6">{children}</div>
+        <div className="mx-auto flex min-h-0 w-full max-w-[1400px] min-w-0 flex-1 flex-col px-4 py-6">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

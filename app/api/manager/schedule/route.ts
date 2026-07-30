@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { requireApiRole } from "@/lib/api-auth";
+import { requireManagerApi } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
 import { resolveDateParam } from "@/lib/dates";
 import { populatedId, populatedName } from "@/lib/mongoose-helpers";
@@ -8,7 +8,7 @@ import { Task, User } from "@/models";
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireApiRole("admin");
+    const auth = await requireManagerApi();
     if (!auth.ok) return auth.response;
     await connectDB();
 
