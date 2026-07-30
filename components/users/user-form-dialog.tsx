@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -42,6 +43,7 @@ interface UserFormDialogProps {
 
 export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
   const isEdit = !!user;
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -64,7 +66,8 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     } else {
       reset({ name: "", email: "", password: "", role: "employee" });
     }
-  }, [user, reset]);
+    setShowPassword(false);
+  }, [user, reset, open]);
 
   const onSubmit = async (data: CreateUserInput | UpdateUserInput) => {
     try {
@@ -109,7 +112,30 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
           <div className="grid gap-1.5">
             <Label htmlFor="password">Password{isEdit ? " (leave blank to keep)" : ""}</Label>
-            <Input id="password" type="password" placeholder={isEdit ? "••••••••" : "Min 8 characters"} {...register("password")} aria-invalid={!!errors.password} />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder={isEdit ? "••••••••" : "Min 8 characters"}
+                className="pr-10"
+                {...register("password")}
+                aria-invalid={!!errors.password}
+              />
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 z-10 flex w-10 items-center justify-center rounded-r-lg transition-colors outline-none"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOffIcon className="size-4 shrink-0" />
+                ) : (
+                  <EyeIcon className="size-4 shrink-0" />
+                )}
+              </button>
+            </div>
             {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
           </div>
 

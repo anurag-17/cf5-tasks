@@ -56,8 +56,7 @@ export function ScheduleTaskDetailDialog({
 
     setCopying(true);
     try {
-      const data: TaskInput = {
-        project: selection.projectId,
+      const slotPayload = {
         title: selection.title,
         description: selection.description,
         date: new Date(selection.date),
@@ -65,6 +64,18 @@ export function ScheduleTaskDetailDialog({
         endTime: nextFree.end as TaskInput["endTime"],
         assignedTo: selection.employeeId,
       };
+
+      // Linked Project ref vs free-text projectName (Team Tasks assign).
+      const data = selection.projectId
+        ? { ...slotPayload, project: selection.projectId }
+        : {
+            ...slotPayload,
+            projectName:
+              selection.project && selection.project !== "—"
+                ? selection.project
+                : undefined,
+          };
+
       await assignTask.mutateAsync(data);
       toast.success(
         `Copied to ${formatTime12h(nextFree.start)}–${formatTime12h(nextFree.end)}.`,
