@@ -2,7 +2,8 @@
 
 import { LogOutIcon } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ModuleNavLink } from "@/components/layouts/module-nav-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_NAME } from "@/lib/constants/app";
 import { ROLE_LABELS, type Role } from "@/lib/constants/roles";
+import { roleHomePath } from "@/lib/permissions";
 
 export type ModuleNavItem = {
   href: string;
@@ -52,8 +54,18 @@ export function ModuleShell({
   defaultSidebarOpen?: boolean;
 }) {
   const displayName = user.name ?? user.email ?? "User";
-
+  const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const homePath = roleHomePath(user.role);
+    const inOwnModule = pathname === homePath || pathname.startsWith(`${homePath}/`);
+
+    if (!inOwnModule) {
+      router.replace(homePath);
+    }
+  }, [pathname, router, user.role]);
+
   const currentScreenLabel =
     navItems.find((item) => item.href === pathname)?.label ??
     navItems.find((item) => pathname.startsWith(`${item.href}/`))?.label ??

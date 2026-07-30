@@ -7,6 +7,18 @@ import { rolesAllowedForRoute, roleHomePath } from "@/lib/permissions";
 // It is NOT the authorization boundary: every protected layout must still call
 // requireRole() from lib/session.ts server-side.
 const PROTECTED_PREFIXES = ["/admin", "/manager", "/employee"];
+const PROTECTED_NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+function withNoStore(res: NextResponse) {
+  for (const [key, value] of Object.entries(PROTECTED_NO_STORE_HEADERS)) {
+    res.headers.set(key, value);
+  }
+  return res;
+}
 
 export default auth((req) => {
   const { nextUrl } = req;
@@ -16,7 +28,7 @@ export default auth((req) => {
 
   if (nextUrl.pathname === "/login") {
     if (user) {
-      return NextResponse.redirect(new URL(roleHomePath(user.role), nextUrl.origin));
+      return withNoStore(NextResponse.redirect(new URL(roleHomePath(user.role), nextUrl.origin)));
     }
     return;
   }
@@ -29,13 +41,15 @@ export default auth((req) => {
   if (!user) {
     const loginUrl = new URL("/login", nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+    return withNoStore(NextResponse.redirect(loginUrl));
   }
 
   const allowedRoles = rolesAllowedForRoute(nextUrl.pathname);
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return NextResponse.redirect(new URL(roleHomePath(user.role), nextUrl.origin));
+    return withNoStore(NextResponse.redirect(new URL(roleHomePath(user.role), nextUrl.origin)));
   }
+
+  return withNoStore(NextResponse.next());
 });
 
 export const config = {
