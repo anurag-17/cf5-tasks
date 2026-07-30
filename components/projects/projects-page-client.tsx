@@ -68,6 +68,7 @@ export function ProjectsPageClient() {
 
   const projects = data?.data?.projects ?? [];
   const totalPages = data?.data?.totalPages ?? 1;
+  const startIndex = (page - 1) * LIMIT;
 
   const handleConfirmArchive = async () => {
     if (!archiveTarget) return;
@@ -96,125 +97,145 @@ export function ProjectsPageClient() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Project Management</h1>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search projects…"
+              className="pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search projects"
+            />
+          </div>
+          <Select value={archivedFilter} onValueChange={(v) => setArchivedFilter(v ?? "false")}>
+            <SelectTrigger className="w-full sm:w-40" aria-label="Filter by archive status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="false">Active</SelectItem>
+              <SelectItem value="true">Archived</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <Button onClick={openCreate}>
           <PlusIcon data-icon="inline-start" />
           New Project
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search projects…"
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search projects"
-          />
-        </div>
-        <Select value={archivedFilter} onValueChange={(v) => setArchivedFilter(v ?? "false")}>
-          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by archive status">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="false">Active</SelectItem>
-            <SelectItem value="true">Archived</SelectItem>
-            <SelectItem value="all">All</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
       ) : projects.length === 0 ? (
         <div className="text-muted-foreground py-12 text-center">No projects found.</div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Created By</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {projects.map((p) => (
-              <TableRow key={p._id}>
-                <TableCell className="font-medium">{p.name}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{p.description || "—"}</TableCell>
-                <TableCell>{p.createdBy?.name ?? "—"}</TableCell>
-                <TableCell>
-                  <Badge variant={p.isArchived ? "secondary" : "default"}>
-                    {p.isArchived ? "Archived" : "Active"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => openEdit(p)}
-                            aria-label={`Edit ${p.name}`}
-                          />
-                        }
-                      >
-                        <PencilIcon />
-                      </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => setArchiveTarget(p)}
-                            aria-label={p.isArchived ? `Restore ${p.name}` : `Archive ${p.name}`}
-                            disabled={toggleArchive.isPending}
-                          />
-                        }
-                      >
-                        {p.isArchived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
-                      </TooltipTrigger>
-                      <TooltipContent>{p.isArchived ? "Restore" : "Archive"}</TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setDeleteTarget(p)}
-                            aria-label={`Delete ${p.name}`}
-                          />
-                        }
-                      >
-                        <Trash2Icon />
-                      </TooltipTrigger>
-                      <TooltipContent>Delete</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </TableCell>
+        <div className="overflow-hidden rounded-xl border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="h-11 w-16 px-4 text-xs font-semibold tracking-wide uppercase">
+                  S.No
+                </TableHead>
+                <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                  Name
+                </TableHead>
+                <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                  Description
+                </TableHead>
+                <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                  Created By
+                </TableHead>
+                <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                  Status
+                </TableHead>
+                <TableHead className="h-11 px-4 text-right text-xs font-semibold tracking-wide uppercase">
+                  Actions
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {projects.map((p, index) => (
+                <TableRow key={p._id}>
+                  <TableCell className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                    {startIndex + index + 1}
+                  </TableCell>
+                  <TableCell className="px-4 py-2.5 font-medium">{p.name}</TableCell>
+                  <TableCell className="max-w-[280px] px-4 py-2.5 text-muted-foreground truncate">
+                    {p.description || "—"}
+                  </TableCell>
+                  <TableCell className="px-4 py-2.5 text-muted-foreground">
+                    {p.createdBy?.name ?? "—"}
+                  </TableCell>
+                  <TableCell className="px-4 py-2.5">
+                    <Badge variant={p.isArchived ? "secondary" : "default"}>
+                      {p.isArchived ? "Archived" : "Active"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-2.5 text-right">
+                    <div className="flex justify-end gap-1">
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => openEdit(p)}
+                              aria-label={`Edit ${p.name}`}
+                            />
+                          }
+                        >
+                          <PencilIcon />
+                        </TooltipTrigger>
+                        <TooltipContent>Edit</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => setArchiveTarget(p)}
+                              aria-label={p.isArchived ? `Restore ${p.name}` : `Archive ${p.name}`}
+                              disabled={toggleArchive.isPending}
+                            />
+                          }
+                        >
+                          {p.isArchived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
+                        </TooltipTrigger>
+                        <TooltipContent>{p.isArchived ? "Restore" : "Archive"}</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setDeleteTarget(p)}
+                              aria-label={`Delete ${p.name}`}
+                            />
+                          }
+                        >
+                          <Trash2Icon />
+                        </TooltipTrigger>
+                        <TooltipContent>Delete</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
