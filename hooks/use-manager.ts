@@ -73,38 +73,6 @@ export function useEmployeeSchedule(employeeId: string, date: string) {
   });
 }
 
-export function useProjectTasks(projectId: string, page: number, date?: string) {
-  const params = new URLSearchParams({ project: projectId, page: String(page) });
-  if (date) params.set("date", date);
-
-  return useQuery({
-    queryKey: ["project-tasks", projectId, page, date],
-    queryFn: () =>
-      fetchJSON<{
-        success: boolean;
-        data: {
-          tasks: Array<{
-            _id: string;
-            project: { _id: string; name: string };
-            title: string;
-            description: string;
-            date: string;
-            startTime: string;
-            endTime: string;
-            assignedTo: { _id: string; name: string; email: string };
-            assignedBy?: { _id: string; name: string };
-            status?: TaskStatus;
-            isReviewed: boolean;
-          }>;
-          total: number;
-          page: number;
-          totalPages: number;
-        };
-      }>(`/api/manager/project-tasks?${params.toString()}`),
-    enabled: !!projectId,
-  });
-}
-
 export function useAssignTask() {
   const qc = useQueryClient();
   return useMutation({

@@ -4,7 +4,6 @@ import { ModuleShell } from "@/components/layouts/module-shell";
 
 const MANAGER_NAV = [
   { href: "/manager/schedule", label: "Schedule", iconKey: "calendarDays" },
-  { href: "/manager/tasks", label: "Tasks", iconKey: "listTodo" },
   { href: "/manager/projects", label: "Projects", iconKey: "folderKanban" },
 ] as const;
 
