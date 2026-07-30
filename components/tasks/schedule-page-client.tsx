@@ -177,6 +177,7 @@ export function SchedulePageClient() {
                 task={task}
                 statusUpdating={task ? statusUpdatingId === task._id : false}
                 onAdd={() => openCreateForSlot(slot)}
+                hideAdd
                 onEdit={task ? () => openEdit(task) : undefined}
                 onCopy={task ? () => openCopyToNextSlot(task) : undefined}
                 onDelete={

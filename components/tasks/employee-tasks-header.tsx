@@ -50,7 +50,13 @@ export function EmployeeTasksHeader({
         </label>
       </div>
 
-      <Button size="lg" onClick={onAddTask} disabled={addDisabled} className="shrink-0 self-start">
+      {/* Hidden for employees — keep markup so it can be re-enabled later */}
+      <Button
+        size="lg"
+        onClick={onAddTask}
+        disabled={addDisabled}
+        className="hidden shrink-0 self-start"
+      >
         <PlusIcon data-icon="inline-start" />
         Add Task
       </Button>

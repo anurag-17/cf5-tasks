@@ -47,6 +47,7 @@ export function EmployeeSlotRow({
   task,
   statusUpdating,
   onAdd,
+  hideAdd,
   onEdit,
   onCopy,
   onDelete,
@@ -58,6 +59,8 @@ export function EmployeeSlotRow({
   task?: EmployeeSlotTask;
   statusUpdating?: boolean;
   onAdd?: () => void;
+  /** Hide Add Task control without removing it (e.g. employee self-schedule). */
+  hideAdd?: boolean;
   onEdit?: () => void;
   onCopy?: () => void;
   onDelete?: () => void;
@@ -81,10 +84,12 @@ export function EmployeeSlotRow({
             <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
               <span className="truncate">{taskProjectLabel(task)}</span>
-              {task.assignedBy ? (
-                <span className="truncate">· {task.assignedBy.name}</span>
-              ) : null}
             </p>
+            {task.assignedBy ? (
+              <p className="text-muted-foreground text-xs break-words">
+                Assigned by: {task.assignedBy.name}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
@@ -167,7 +172,10 @@ export function EmployeeSlotRow({
               variant="link"
               size="sm"
               onClick={onAdd}
-              className="text-primary h-auto px-0 py-0 font-medium"
+              className={cn(
+                "text-primary h-auto px-0 py-0 font-medium",
+                hideAdd && "hidden",
+              )}
             >
               <PlusIcon data-icon="inline-start" />
               Add Task
