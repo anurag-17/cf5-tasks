@@ -4,7 +4,7 @@ import { ModuleShell } from "@/components/layouts/module-shell";
 
 const MANAGER_NAV = [
   { href: "/manager/schedule", label: "Schedule", iconKey: "calendarDays" },
-  { href: "/manager/projects", label: "Projects", iconKey: "folderKanban" },
+  { href: "/manager/team-tasks", label: "Team Tasks", iconKey: "listTodo" },
 ] as const;
 
 export default async function ManagerLayout({ children }: { children: React.ReactNode }) {

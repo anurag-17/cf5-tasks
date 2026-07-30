@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { CalendarIcon, PlusIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -11,28 +12,35 @@ function formatDisplayDate(yyyyMmDd: string) {
 }
 
 export function EmployeeTasksHeader({
+  title = "My Tasks",
   selectedDate,
   onDateChange,
   onAddTask,
   addDisabled,
+  dateInputId = "employee-schedule-date",
+  extra,
 }: {
+  title?: string;
   selectedDate: string;
   onDateChange: (date: string) => void;
   onAddTask: () => void;
   addDisabled?: boolean;
+  dateInputId?: string;
+  extra?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">My Tasks</h1>
+        {title ? <h1 className="text-2xl font-semibold tracking-tight">{title}</h1> : null}
+        {extra}
         <label
-          htmlFor="employee-schedule-date"
+          htmlFor={dateInputId}
           className="border-input bg-card hover:bg-muted/40 focus-within:ring-ring relative inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-sm shadow-xs focus-within:ring-2"
         >
           <CalendarIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <span className="text-foreground">{formatDisplayDate(selectedDate)}</span>
           <input
-            id="employee-schedule-date"
+            id={dateInputId}
             type="date"
             value={selectedDate}
             onChange={(e) => onDateChange(e.target.value)}

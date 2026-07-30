@@ -92,6 +92,10 @@ export function SchedulePageClient() {
   };
 
   const openEdit = (task: EmployeeSlotTask) => {
+    if (!task.project) {
+      toast.error("This task is missing a project and cannot be edited here.");
+      return;
+    }
     setEditTask(task);
     setCopyFrom(null);
     setSelectedSlot(null);
@@ -99,6 +103,10 @@ export function SchedulePageClient() {
   };
 
   const openCopyToNextSlot = (task: EmployeeSlotTask) => {
+    if (!task.project) {
+      toast.error("This task is missing a project and cannot be copied here.");
+      return;
+    }
     const occupiedStartTimes = tasks.map((t) => t.startTime);
     const nextSlot = getNextFreeSlot(task.startTime, occupiedStartTimes);
     if (!nextSlot) {
@@ -184,7 +192,20 @@ export function SchedulePageClient() {
       <TaskFormDialog
         open={formOpen}
         onOpenChange={handleFormOpenChange}
-        task={editTask}
+        task={
+          editTask?.project
+            ? {
+                _id: editTask._id,
+                project: editTask.project,
+                title: editTask.title,
+                description: editTask.description,
+                date: editTask.date,
+                startTime: editTask.startTime,
+                endTime: editTask.endTime,
+                assignedBy: editTask.assignedBy,
+              }
+            : null
+        }
         copyFrom={copyFrom}
         date={selectedDate}
         slotStart={selectedSlot?.start}

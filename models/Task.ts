@@ -10,7 +10,10 @@ import {
 import { countWords } from "@/lib/word-count";
 
 export interface ITask extends Document {
-  project: Types.ObjectId;
+  /** Linked Project doc — required for employee self-logged tasks; optional for Team Tasks free-text. */
+  project?: Types.ObjectId;
+  /** Free-text project label for Admin/PM Team Tasks assign (optional). */
+  projectName?: string;
   title: string;
   description: string;
   date: Date;
@@ -26,10 +29,12 @@ export interface ITask extends Document {
 
 const TaskSchema = new Schema<ITask>(
   {
-    // "Project Name" — stored as a reference (not a copied string) so
-    // renaming a project doesn't require rewriting every task, and so Admin
-    // can "Filter by project" with an indexed lookup instead of a text scan.
-    project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
+    // Linked project (employee / schedule-filter flows). Optional so Team Tasks
+    // can store a free-text `projectName` instead.
+    project: { type: Schema.Types.ObjectId, ref: "Project", required: false },
+
+    // Optional display name when no Project ref is set (Admin/PM Team Tasks).
+    projectName: { type: String, trim: true, maxlength: 150, required: false },
 
     // "Task Title (Main Point)" — the short label shown in the Admin
     // dashboard's per-slot cell (e.g. "Login API").

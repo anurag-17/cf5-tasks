@@ -36,3 +36,16 @@ export function todayDateInputValue(): string {
   const d = String(now.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+/** True if the UTC calendar day of `date` is before today's UTC calendar day. */
+export function isPastUtcDay(date: Date): boolean {
+  return toUtcDayStart(date).getTime() < todayUtcDayStart().getTime();
+}
+
+/**
+ * True if a YYYY-MM-DD date-input value is before local today.
+ * Safe for `<input type="date">` comparisons (lexicographic ISO dates).
+ */
+export function isPastDateInputValue(yyyyMmDd: string): boolean {
+  return yyyyMmDd < todayDateInputValue();
+}

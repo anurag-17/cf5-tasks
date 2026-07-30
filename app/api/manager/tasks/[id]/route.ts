@@ -5,7 +5,11 @@ import { handleApiError } from "@/lib/api/handle-api-error";
 import { toUtcDayStart } from "@/lib/dates";
 import { toObjectId } from "@/lib/mongoose-helpers";
 import { Task } from "@/models";
-import { taskSchema } from "@/lib/validations/task";
+import { TASK_STATUSES } from "@/lib/constants/task";
+import {
+  normalizeOptionalProjectName,
+  parseManagerTaskWriteBody,
+} from "@/lib/validations/task";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -30,20 +34,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       );
     }
 
-    const body = await req.json();
-    const parsed = taskSchema.parse(body);
+    if (task.isReviewed) {
+      return NextResponse.json(
+        { success: false, error: "Cannot edit a reviewed task." },
+        { status: 403 },
+      );
+    }
 
-    const dayStart = toUtcDayStart(parsed.date);
+    const body = await req.json();
+    const parsed = parseManagerTaskWriteBody(body, "update");
+    const dayStart = toUtcDayStart(parsed.data.date);
 
     if (
-      parsed.startTime !== task.startTime ||
-      parsed.assignedTo !== task.assignedTo.toString() ||
+      parsed.data.startTime !== task.startTime ||
+      parsed.data.assignedTo !== task.assignedTo.toString() ||
       dayStart.getTime() !== task.date.getTime()
     ) {
       const conflict = await Task.findOne({
-        assignedTo: parsed.assignedTo,
+        assignedTo: parsed.data.assignedTo,
         date: dayStart,
-        startTime: parsed.startTime,
+        startTime: parsed.data.startTime,
         _id: { $ne: id },
       });
       if (conflict) {
@@ -54,13 +64,36 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
     }
 
-    task.project = toObjectId(parsed.project);
-    task.title = parsed.title;
-    task.description = parsed.description;
+    task.title = parsed.data.title;
+    task.description = parsed.data.description;
     task.date = dayStart;
-    task.startTime = parsed.startTime;
-    task.endTime = parsed.endTime;
-    task.assignedTo = toObjectId(parsed.assignedTo);
+    task.startTime = parsed.data.startTime;
+    task.endTime = parsed.data.endTime;
+    task.assignedTo = toObjectId(parsed.data.assignedTo);
+
+    if (parsed.kind === "linked") {
+      task.project = toObjectId(parsed.data.project);
+      task.projectName = undefined;
+    } else {
+      task.project = undefined;
+      task.projectName = normalizeOptionalProjectName(parsed.data.projectName);
+      if (
+        "status" in parsed.data &&
+        typeof parsed.data.status === "string" &&
+        (TASK_STATUSES as readonly string[]).includes(parsed.data.status)
+      ) {
+        task.status = parsed.data.status;
+      }
+    }
+
+    // Linked-project edits may still send status (e.g. status-only updates via full payload).
+    if (
+      parsed.kind === "linked" &&
+      typeof body.status === "string" &&
+      (TASK_STATUSES as readonly string[]).includes(body.status)
+    ) {
+      task.status = body.status;
+    }
 
     await task.save();
     return NextResponse.json({ success: true, data: task });

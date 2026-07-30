@@ -52,6 +52,11 @@ interface AssignTaskDialogProps {
   date?: string;
   slotStart?: string;
   slotEnd?: string;
+  copyFrom?: {
+    project: { _id: string; name: string };
+    title: string;
+    description: string;
+  } | null;
 }
 
 export function AssignTaskDialog({
@@ -62,6 +67,7 @@ export function AssignTaskDialog({
   date,
   slotStart,
   slotEnd,
+  copyFrom,
 }: AssignTaskDialogProps) {
   const isEdit = !!task;
   const lockContext = !isEdit && !!employeeId && !!slotStart;
@@ -99,16 +105,16 @@ export function AssignTaskDialog({
       });
     } else {
       reset({
-        project: "",
-        title: "",
-        description: "",
+        project: copyFrom?.project._id ?? "",
+        title: copyFrom?.title ?? "",
+        description: copyFrom?.description ?? "",
         date: date ? new Date(date) : new Date(),
         startTime: (slotStart ?? "09:30") as TaskInput["startTime"],
         endTime: (slotEnd ?? "10:30") as TaskInput["endTime"],
         assignedTo: employeeId ?? "",
       });
     }
-  }, [task, date, slotStart, slotEnd, employeeId, reset]);
+  }, [task, date, slotStart, slotEnd, employeeId, copyFrom, reset]);
 
   const onSubmit = async (values: TaskFormValues) => {
     try {

@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       taskMap[empId][t.startTime] = {
         title: t.title,
         description: t.description,
-        project: populatedName(t.project),
+        project: populatedName(t.project, "") || t.projectName || "—",
         projectId: populatedId(t.project),
         assignedBy: populatedName(t.assignedBy, "Self"),
         endTime: t.endTime,

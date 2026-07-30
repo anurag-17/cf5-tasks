@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ModuleNavLink } from "@/components/layouts/module-nav-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -152,10 +153,23 @@ export function ModuleShell({
                 {userInitials(user.name, user.email)}
               </AvatarFallback>
             </Avatar>
+            <span className="max-w-[10rem] truncate text-sm font-medium">
+              {displayName}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Sign out"
+              className="cursor-pointer"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              <LogOutIcon className="size-4" aria-hidden />
+            </Button>
           </div>
         </header>
 
-        <div className="mx-auto flex min-h-0 w-full max-w-[1400px] min-w-0 flex-1 flex-col px-4 py-6">
+        <div className="mx-auto flex min-h-0 w-full min-w-0 flex-1 flex-col px-4 py-6">
           {children}
         </div>
       </SidebarInset>

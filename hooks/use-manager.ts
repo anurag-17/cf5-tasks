@@ -2,8 +2,17 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TaskStatus } from "@/lib/constants/task";
-import type { TaskInput } from "@/lib/validations/task";
+import type {
+  TaskInput,
+  TeamAssignTaskInput,
+  TeamAssignTaskUpdateInput,
+} from "@/lib/validations/task";
 import { fetchJSON } from "@/lib/api/fetch-json";
+
+export type ManagerTaskWriteInput = TaskInput | TeamAssignTaskInput;
+export type ManagerTaskUpdateInput =
+  | (TaskInput & { status?: TaskStatus })
+  | TeamAssignTaskUpdateInput;
 
 export interface ManagerScheduleSlot {
   title: string;
@@ -58,7 +67,8 @@ export function useEmployeeSchedule(employeeId: string, date: string) {
         success: boolean;
         data: Array<{
           _id: string;
-          project: { _id: string; name: string };
+          project: { _id: string; name: string } | null;
+          projectName?: string;
           title: string;
           description: string;
           date: string;
@@ -76,7 +86,7 @@ export function useEmployeeSchedule(employeeId: string, date: string) {
 export function useAssignTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: TaskInput) =>
+    mutationFn: (data: ManagerTaskWriteInput) =>
       fetchJSON("/api/manager/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +104,7 @@ export function useAssignTask() {
 export function useEditAssignedTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: TaskInput }) =>
+    mutationFn: ({ id, data }: { id: string; data: ManagerTaskUpdateInput }) =>
       fetchJSON(`/api/manager/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

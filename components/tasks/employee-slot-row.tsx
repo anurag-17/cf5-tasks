@@ -23,7 +23,8 @@ import { cn } from "@/lib/utils";
 
 export type EmployeeSlotTask = {
   _id: string;
-  project: { _id: string; name: string };
+  project: { _id: string; name: string } | null;
+  projectName?: string;
   title: string;
   description: string;
   date: string;
@@ -33,6 +34,11 @@ export type EmployeeSlotTask = {
   status?: TaskStatus;
   isReviewed: boolean;
 };
+
+/** Display label: linked project name, else free-text projectName. */
+export function taskProjectLabel(task: Pick<EmployeeSlotTask, "project" | "projectName">): string {
+  return task.project?.name || task.projectName || "—";
+}
 
 export function EmployeeSlotRow({
   start,
@@ -74,7 +80,7 @@ export function EmployeeSlotRow({
             <p className="line-clamp-2 min-h-10 text-sm leading-5 font-medium">{task.title}</p>
             <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-              <span className="truncate">{task.project.name}</span>
+              <span className="truncate">{taskProjectLabel(task)}</span>
               {task.assignedBy ? (
                 <span className="truncate">· {task.assignedBy.name}</span>
               ) : null}
@@ -98,16 +104,18 @@ export function EmployeeSlotRow({
 
           {!task.isReviewed ? (
             <div className="flex shrink-0 items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Copy ${task.title} to next free slot`}
-                title="Copy to next free slot"
-                onClick={onCopy}
-                className="shrink-0"
-              >
-                <CopyIcon />
-              </Button>
+              {onCopy ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Copy ${task.title} to next free slot`}
+                  title="Copy to next free slot"
+                  onClick={onCopy}
+                  className="shrink-0"
+                >
+                  <CopyIcon />
+                </Button>
+              ) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -122,18 +130,24 @@ export function EmployeeSlotRow({
                   <MoreVerticalIcon />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onEdit}>
-                    <PencilIcon />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onCopy}>
-                    <CopyIcon />
-                    Copy to next free slot
-                  </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                    <Trash2Icon />
-                    Delete
-                  </DropdownMenuItem>
+                  {onEdit ? (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <PencilIcon />
+                      Edit
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onCopy ? (
+                    <DropdownMenuItem onClick={onCopy}>
+                      <CopyIcon />
+                      Copy to next free slot
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onDelete ? (
+                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                      <Trash2Icon />
+                      Delete
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -148,15 +162,19 @@ export function EmployeeSlotRow({
             "border-border/80 bg-muted/20",
           )}
         >
-          <Button
-            variant="link"
-            size="sm"
-            onClick={onAdd}
-            className="text-primary h-auto px-0 py-0 font-medium"
-          >
-            <PlusIcon data-icon="inline-start" />
-            Add Task
-          </Button>
+          {onAdd ? (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={onAdd}
+              className="text-primary h-auto px-0 py-0 font-medium"
+            >
+              <PlusIcon data-icon="inline-start" />
+              Add Task
+            </Button>
+          ) : (
+            <span className="text-muted-foreground text-sm font-medium">Unavailable</span>
+          )}
           <p className="text-muted-foreground text-sm">No task added for this slot</p>
         </div>
       )}

@@ -48,8 +48,6 @@ export default auth((req) => {
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return withNoStore(NextResponse.redirect(new URL(roleHomePath(user.role), nextUrl.origin)));
   }
-
-  return withNoStore(NextResponse.next());
 });
 
 export const config = {

@@ -1,17 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CalendarIcon, PlusIcon, UtensilsIcon } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CalendarIcon, UtensilsIcon } from "lucide-react";
 import { useAdminSchedule } from "@/hooks/use-admin-schedule";
 import { useEmployees } from "@/hooks/use-manager";
 import { useProjects } from "@/hooks/use-projects";
 import { TIME_SLOTS, LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 import { todayDateInputValue } from "@/lib/dates";
-import { formatDate, formatTime12h } from "@/lib/format";
+import { formatTime12h } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -20,20 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { AssignTaskDialog } from "@/components/manager/assign-task-dialog";
 import { FreeSlotAssign } from "@/components/schedule/free-slot-assign";
 import {
   ScheduleTaskDetailDialog,
   type ScheduleTaskSelection,
 } from "@/components/schedule/schedule-task-detail-dialog";
-import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import { normalizeTaskStatus } from "@/lib/constants/task";
 
 const ALL_DISPLAY_SLOTS = [
@@ -41,8 +32,6 @@ const ALL_DISPLAY_SLOTS = [
   { start: LUNCH_START_TIME, end: LUNCH_END_TIME },
   ...TIME_SLOTS.slice(4),
 ];
-
-const BOOKABLE_SLOT_COUNT = TIME_SLOTS.length;
 
 type SlotTask = {
   title: string;
@@ -119,124 +108,10 @@ function EmployeeNameButton({
         "hover:text-primary truncate text-left font-medium transition-colors hover:underline",
         className,
       )}
-      aria-label={`View ${name}'s daily schedule`}
+      aria-label={`Manage ${name}'s tasks`}
     >
       {name}
     </button>
-  );
-}
-
-function EmployeeScheduleDrawer({
-  employee,
-  date,
-  open,
-  onOpenChange,
-  onTaskClick,
-  onAssignSlot,
-}: {
-  employee: ScheduleRow | null;
-  date: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onTaskClick: (task: SlotTask, slotStart: string) => void;
-  onAssignSlot: (slot: { start: string; end: string }) => void;
-}) {
-  const summary = useMemo(() => {
-    if (!employee) return { busy: 0, free: 0 };
-
-    let busy = 0;
-    for (const slot of TIME_SLOTS) {
-      if (employee.slots[slot.start]) busy += 1;
-    }
-
-    return { busy, free: BOOKABLE_SLOT_COUNT - busy };
-  }, [employee]);
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-        {employee ? (
-          <>
-            <SheetHeader className="border-b px-4 py-4">
-              <SheetTitle>{employee.name}</SheetTitle>
-              <SheetDescription>
-                {formatDate(date)} · {summary.busy} tasks, {summary.free} free slots
-              </SheetDescription>
-            </SheetHeader>
-
-            <div className="flex-1 space-y-2 overflow-y-auto p-4">
-              {ALL_DISPLAY_SLOTS.map((slot) => {
-                const isLunch = slot.start === LUNCH_START_TIME;
-                const task = employee.slots[slot.start];
-
-                return (
-                  <div
-                    key={slot.start}
-                    className={cn(
-                      "rounded-lg border p-3",
-                      isLunch ? "bg-muted/50 border-dashed" : task ? "bg-card" : "bg-muted/20",
-                    )}
-                  >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">
-                        {formatTime12h(slot.start)} – {formatTime12h(slot.end)}
-                      </span>
-                      {isLunch ? (
-                        <Badge variant="outline" className="text-xs">
-                          Lunch
-                        </Badge>
-                      ) : task ? (
-                        <Badge variant="secondary" className="text-xs">
-                          Busy
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          Free
-                        </Badge>
-                      )}
-                    </div>
-
-                    {isLunch ? (
-                      <p className="text-muted-foreground flex items-center gap-1.5 text-sm italic">
-                        <UtensilsIcon className="size-3.5" aria-hidden />
-                        Lunch break
-                      </p>
-                    ) : task ? (
-                      <button
-                        type="button"
-                        onClick={() => onTaskClick(task, slot.start)}
-                        className="bg-muted/40 hover:bg-muted w-full rounded-md border p-2.5 text-left transition-colors"
-                      >
-                        <p className="font-medium">{task.project}</p>
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          Assigned by: {task.assignedBy}
-                        </p>
-                        <div className="mt-2">
-                          <TaskStatusBadge status={normalizeTaskStatus(task.status)} />
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-muted-foreground text-sm">No task scheduled</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onAssignSlot({ start: slot.start, end: slot.end })}
-                        >
-                          <PlusIcon data-icon="inline-start" />
-                          Assign
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        ) : null}
-      </SheetContent>
-    </Sheet>
   );
 }
 
@@ -257,11 +132,11 @@ function TaskChip({ task, onClick }: { task: SlotTask; onClick: () => void }) {
 }
 
 export function AdminScheduleClient() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(todayDateInputValue);
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   const [selectedTask, setSelectedTask] = useState<ScheduleTaskSelection | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<ScheduleRow | null>(null);
   const [assignTarget, setAssignTarget] = useState<{
     employeeId: string;
     slotStart: string;
@@ -366,7 +241,11 @@ export function AdminScheduleClient() {
                     <CardTitle className="truncate text-sm">
                       <EmployeeNameButton
                         name={row.name}
-                        onClick={() => setSelectedEmployee(row)}
+                        onClick={() =>
+                          router.push(
+                            `/admin/team-tasks?employee=${row._id}&date=${selectedDate}`,
+                          )
+                        }
                         className="text-sm"
                       />
                     </CardTitle>
@@ -460,7 +339,11 @@ export function AdminScheduleClient() {
                           >
                             <EmployeeNameButton
                               name={row.name}
-                              onClick={() => setSelectedEmployee(row)}
+                              onClick={() =>
+                          router.push(
+                            `/admin/team-tasks?employee=${row._id}&date=${selectedDate}`,
+                          )
+                        }
                             />
                           </td>
                           {ALL_DISPLAY_SLOTS.map((slot) => {
@@ -527,25 +410,6 @@ export function AdminScheduleClient() {
           </>
         )}
       </div>
-
-      <EmployeeScheduleDrawer
-        employee={selectedEmployee}
-        date={selectedDate}
-        open={!!selectedEmployee}
-        onOpenChange={(open) => !open && setSelectedEmployee(null)}
-        onTaskClick={(task, slotStart) => {
-          if (!selectedEmployee) return;
-          setSelectedTask(toTaskSelection(selectedEmployee, task, slotStart, selectedDate));
-        }}
-        onAssignSlot={(slot) => {
-          if (!selectedEmployee) return;
-          setAssignTarget({
-            employeeId: selectedEmployee._id,
-            slotStart: slot.start,
-            slotEnd: slot.end,
-          });
-        }}
-      />
 
       <AssignTaskDialog
         open={!!assignTarget}
