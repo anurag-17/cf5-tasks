@@ -17,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { normalizeTaskStatus } from "@/lib/constants/task";
 
 export type ScheduleTaskSelection = {
   title: string;
@@ -30,6 +32,8 @@ export type ScheduleTaskSelection = {
   slotStart: string;
   date: string;
   occupiedStarts: string[];
+  status?: string;
+  isReviewed?: boolean;
 };
 
 export function ScheduleTaskDetailDialog({
@@ -93,6 +97,8 @@ export function ScheduleTaskDetailDialog({
             <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{selection.project}</Badge>
+                <TaskStatusBadge status={normalizeTaskStatus(selection.status)} />
+                {selection.isReviewed ? <Badge>Reviewed</Badge> : null}
                 <span className="text-muted-foreground text-xs">
                   Assigned by: {selection.assignedBy}
                 </span>

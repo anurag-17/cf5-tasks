@@ -9,6 +9,8 @@ interface SlotData {
   projectId: string;
   assignedBy: string;
   endTime: string;
+  status: string;
+  isReviewed: boolean;
 }
 
 export interface ScheduleRow {

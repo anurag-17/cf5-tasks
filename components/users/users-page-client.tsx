@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { UserFormDialog } from "./user-form-dialog";
 import { DeleteUserDialog } from "./delete-user-dialog";
 
@@ -55,6 +56,7 @@ export function UsersPageClient() {
 
   const users = data?.data?.users ?? [];
   const totalPages = data?.data?.totalPages ?? 1;
+  const startIndex = (page - 1) * LIMIT;
 
   const handleToggleStatus = async (id: string, name: string) => {
     try {
@@ -76,103 +78,119 @@ export function UsersPageClient() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">User Management</h1>
-        <Button onClick={openCreate}>
-          <PlusIcon data-icon="inline-start" />
-          Add User
-        </Button>
-      </div>
+    <div className="space-y-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+                <Input
+                  placeholder="Search by name or email…"
+                  className="pl-8"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search users by name or email"
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
+                <SelectTrigger className="w-full sm:w-44" aria-label="Filter by role">
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="project_manager">{ROLE_LABELS.project_manager}</SelectItem>
+                  <SelectItem value="employee">{ROLE_LABELS.employee}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={openCreate}>
+              <PlusIcon data-icon="inline-start" />
+              Add User
+            </Button>
+          </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search by name or email…"
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search users by name or email"
-          />
-        </div>
-        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
-          <SelectTrigger className="w-full sm:w-44" aria-label="Filter by role">
-            <SelectValue placeholder="Filter by role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="project_manager">{ROLE_LABELS.project_manager}</SelectItem>
-            <SelectItem value="employee">{ROLE_LABELS.employee}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      ) : users.length === 0 ? (
-        <div className="text-muted-foreground py-12 text-center">No users found.</div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((u) => (
-              <TableRow key={u._id}>
-                <TableCell className="font-medium">{u.name}</TableCell>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{ROLE_LABELS[u.role as Role] ?? u.role}</Badge>
-                </TableCell>
-                <TableCell>
-                  <button
-                    type="button"
-                    className="cursor-pointer"
-                    onClick={() => handleToggleStatus(u._id, u.name)}
-                    disabled={toggleStatus.isPending}
-                    aria-label={`Toggle status for ${u.name}`}
-                  >
-                    <Badge variant={u.isActive ? "default" : "destructive"}>
-                      {u.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </button>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => openEdit(u)}
-                      aria-label={`Edit ${u.name}`}
-                    >
-                      <PencilIcon />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setDeleteTarget(u)}
-                      aria-label={`Delete ${u.name}`}
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : users.length === 0 ? (
+            <div className="text-muted-foreground py-12 text-center">No users found.</div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="h-11 w-16 px-4 text-xs font-semibold tracking-wide uppercase">
+                      S.No
+                    </TableHead>
+                    <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                      Name
+                    </TableHead>
+                    <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                      Email
+                    </TableHead>
+                    <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                      Role
+                    </TableHead>
+                    <TableHead className="h-11 px-4 text-xs font-semibold tracking-wide uppercase">
+                      Status
+                    </TableHead>
+                    <TableHead className="h-11 px-4 text-right text-xs font-semibold tracking-wide uppercase">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u, index) => (
+                    <TableRow key={u._id}>
+                      <TableCell className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                        {startIndex + index + 1}
+                      </TableCell>
+                      <TableCell className="px-4 py-2.5 font-medium">{u.name}</TableCell>
+                      <TableCell className="px-4 py-2.5 text-muted-foreground">{u.email}</TableCell>
+                      <TableCell className="px-4 py-2.5">
+                        <Badge variant="secondary">{ROLE_LABELS[u.role as Role] ?? u.role}</Badge>
+                      </TableCell>
+                      <TableCell className="px-4 py-2.5">
+                        <button
+                          type="button"
+                          className="cursor-pointer"
+                          onClick={() => handleToggleStatus(u._id, u.name)}
+                          disabled={toggleStatus.isPending}
+                          aria-label={`Toggle status for ${u.name}`}
+                        >
+                          <Badge variant={u.isActive ? "default" : "destructive"}>
+                            {u.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </button>
+                      </TableCell>
+                      <TableCell className="px-4 py-2.5 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => openEdit(u)}
+                            aria-label={`Edit ${u.name}`}
+                          >
+                            <PencilIcon />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => setDeleteTarget(u)}
+                            aria-label={`Delete ${u.name}`}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

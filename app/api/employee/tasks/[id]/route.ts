@@ -74,6 +74,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (parsed.description) task.description = parsed.description;
     if (parsed.startTime) task.startTime = parsed.startTime;
     if (parsed.endTime) task.endTime = parsed.endTime;
+    if (parsed.status) task.status = parsed.status;
 
     if (parsed.assignedBy !== undefined) {
       if (!parsed.assignedBy) {

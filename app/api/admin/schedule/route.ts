@@ -4,6 +4,7 @@ import { requireApiRole } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
 import { resolveDateParam } from "@/lib/dates";
 import { populatedId, populatedName } from "@/lib/mongoose-helpers";
+import { normalizeTaskStatus } from "@/lib/constants/task";
 import { Task, User } from "@/models";
 
 export async function GET(req: NextRequest) {
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
           projectId: string;
           assignedBy: string;
           endTime: string;
+          status: string;
+          isReviewed: boolean;
         }
       >
     > = {};
@@ -57,6 +60,8 @@ export async function GET(req: NextRequest) {
         projectId: populatedId(t.project),
         assignedBy: populatedName(t.assignedBy, "Self"),
         endTime: t.endTime,
+        status: normalizeTaskStatus(t.status),
+        isReviewed: Boolean(t.isReviewed),
       };
     }
 

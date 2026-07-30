@@ -1,6 +1,12 @@
 import { Schema, model, models, type Document, type Model, type Types } from "mongoose";
 import { TASK_START_TIMES, TASK_END_TIMES, TIME_SLOTS } from "@/lib/constants/office-hours";
-import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import {
+  DEFAULT_TASK_STATUS,
+  TASK_DESCRIPTION_MIN_WORDS,
+  TASK_DESCRIPTION_MAX_WORDS,
+  TASK_STATUSES,
+  type TaskStatus,
+} from "@/lib/constants/task";
 import { countWords } from "@/lib/word-count";
 
 export interface ITask extends Document {
@@ -12,6 +18,7 @@ export interface ITask extends Document {
   endTime: string; // "HH:mm", one of TASK_END_TIMES
   assignedTo: Types.ObjectId;
   assignedBy?: Types.ObjectId;
+  status: TaskStatus;
   isReviewed: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -71,6 +78,14 @@ const TaskSchema = new Schema<ITask>(
     // ("Employees can: ... Add and manage their own daily tasks"), so it's
     // optional rather than required.
     assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
+
+    // Employee work progress (Pending / In Progress / Completed). Independent
+    // of `isReviewed`, which is the Admin/PM lock on edit/delete.
+    status: {
+      type: String,
+      enum: TASK_STATUSES,
+      default: DEFAULT_TASK_STATUS,
+    },
 
     // Backs "Delete their own task (if not reviewed)" — once a PM/Admin has
     // reviewed a task, the employee can no longer delete it. A plain boolean

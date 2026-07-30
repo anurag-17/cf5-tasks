@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AssignTaskDialog } from "./assign-task-dialog";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { normalizeTaskStatus } from "@/lib/constants/task";
 
 export function EmployeeScheduleView() {
   const [selectedDate, setSelectedDate] = useState(todayDateInputValue);
@@ -147,6 +149,7 @@ export function EmployeeScheduleView() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{task.title}</span>
                         <Badge variant="secondary">{task.project.name}</Badge>
+                        <TaskStatusBadge status={normalizeTaskStatus(task.status)} />
                         {task.isReviewed && <Badge>Reviewed</Badge>}
                       </div>
                       {task.assignedBy && (

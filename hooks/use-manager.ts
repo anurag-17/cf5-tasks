@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { TaskStatus } from "@/lib/constants/task";
 import type { TaskInput } from "@/lib/validations/task";
 import { fetchJSON } from "@/lib/api/fetch-json";
 
@@ -11,6 +12,8 @@ export interface ManagerScheduleSlot {
   projectId: string;
   assignedBy: string;
   endTime: string;
+  status: string;
+  isReviewed: boolean;
 }
 
 export interface ManagerScheduleRow {
@@ -62,6 +65,7 @@ export function useEmployeeSchedule(employeeId: string, date: string) {
           startTime: string;
           endTime: string;
           assignedBy?: { _id: string; name: string };
+          status?: TaskStatus;
           isReviewed: boolean;
         }>;
       }>(`/api/manager/employees/${employeeId}/schedule?date=${date}`),
@@ -89,6 +93,7 @@ export function useProjectTasks(projectId: string, page: number, date?: string) 
             endTime: string;
             assignedTo: { _id: string; name: string; email: string };
             assignedBy?: { _id: string; name: string };
+            status?: TaskStatus;
             isReviewed: boolean;
           }>;
           total: number;

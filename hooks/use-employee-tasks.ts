@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EmployeeTaskInput, UpdateEmployeeTaskInput } from "@/lib/validations/task";
+import type { TaskStatus } from "@/lib/constants/task";
 import { fetchJSON } from "@/lib/api/fetch-json";
 
 export function useSchedule(date: string) {
@@ -19,6 +20,7 @@ export function useSchedule(date: string) {
           startTime: string;
           endTime: string;
           assignedBy?: { _id: string; name: string };
+          status?: TaskStatus;
           isReviewed: boolean;
         }>;
       }>(`/api/employee/schedule?date=${date}`),

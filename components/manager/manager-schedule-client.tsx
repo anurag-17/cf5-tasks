@@ -45,6 +45,8 @@ import {
   ScheduleTaskDetailDialog,
   type ScheduleTaskSelection,
 } from "@/components/schedule/schedule-task-detail-dialog";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { normalizeTaskStatus } from "@/lib/constants/task";
 
 const ALL_DISPLAY_SLOTS = [
   ...TIME_SLOTS.slice(0, 4),
@@ -53,6 +55,24 @@ const ALL_DISPLAY_SLOTS = [
 ];
 
 const BOOKABLE_SLOT_COUNT = TIME_SLOTS.length;
+
+function StatusDot({ status }: { status: string }) {
+  const normalized = normalizeTaskStatus(status);
+  const tone =
+    normalized === "completed"
+      ? "bg-emerald-500"
+      : normalized === "in_progress"
+        ? "bg-sky-500"
+        : "bg-amber-500";
+
+  return (
+    <span
+      className={cn("inline-block size-2.5 shrink-0 rounded-full", tone)}
+      aria-label={`Status: ${normalized.replace("_", " ")}`}
+      title={`Status: ${normalized.replace("_", " ")}`}
+    />
+  );
+}
 
 function toTaskSelection(
   row: ManagerScheduleRow,
@@ -72,6 +92,8 @@ function toTaskSelection(
     slotStart,
     date,
     occupiedStarts: Object.keys(row.slots),
+    status: task.status,
+    isReviewed: task.isReviewed,
   };
 }
 
@@ -184,6 +206,9 @@ function EmployeeScheduleDrawer({
                         <p className="text-muted-foreground mt-1 text-xs">
                           Assigned by: {task.assignedBy}
                         </p>
+                        <div className="mt-2">
+                          <TaskStatusBadge status={normalizeTaskStatus(task.status)} />
+                        </div>
                       </button>
                     ) : (
                       <div className="flex items-center justify-between gap-2">
@@ -215,12 +240,13 @@ function TaskChip({ task, onClick }: { task: ManagerScheduleSlot; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="w-full max-w-[140px] cursor-pointer text-left transition-colors hover:underline"
+      className="w-full max-w-[140px] cursor-pointer space-y-1 text-left transition-colors hover:underline"
       title={`${task.project} · Assigned by ${task.assignedBy}`}
       aria-label={`View task for project: ${task.project}`}
     >
       <p className="text-primary truncate text-sm leading-snug font-semibold">{task.project}</p>
       <p className="text-muted-foreground truncate text-xs">{task.assignedBy}</p>
+      <StatusDot status={task.status} />
     </button>
   );
 }

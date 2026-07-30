@@ -27,6 +27,7 @@ import { employeeTaskSchema } from "@/lib/validations/task";
 import type { EmployeeTaskInput } from "@/lib/validations/task";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-employee-tasks";
 import { TIME_SLOTS } from "@/lib/constants/office-hours";
+import { formatTime12h } from "@/lib/format";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
 import { z } from "zod";
@@ -216,7 +217,7 @@ export function TaskFormDialog({
             {isEdit
               ? "Update your task details."
               : isCopy
-                ? `Same details copied to ${slotStart ?? ""}–${slotEnd ?? ""}. Review and save.`
+                ? `Same details copied to ${slotStart ? formatTime12h(slotStart) : ""}–${slotEnd ? formatTime12h(slotEnd) : ""}. Review and save.`
                 : "Fill in your task for this time slot."}
           </DialogDescription>
         </DialogHeader>
@@ -313,13 +314,15 @@ export function TaskFormDialog({
             <Select value={startTime ?? null} onValueChange={(v) => handleSlotChange(v ?? "")}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select time slot">
-                  {slotLabel ? `${slotLabel.start} – ${slotLabel.end}` : null}
+                  {slotLabel
+                    ? `${formatTime12h(slotLabel.start)} – ${formatTime12h(slotLabel.end)}`
+                    : null}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {TIME_SLOTS.map((slot) => (
                   <SelectItem key={slot.start} value={slot.start}>
-                    {slot.start} – {slot.end}
+                    {formatTime12h(slot.start)} – {formatTime12h(slot.end)}
                   </SelectItem>
                 ))}
               </SelectContent>

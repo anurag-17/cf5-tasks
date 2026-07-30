@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pagination } from "@/components/ui/pagination";
+import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
+import { normalizeTaskStatus } from "@/lib/constants/task";
 import {
   Select,
   SelectContent,
@@ -93,9 +95,10 @@ export function ProjectTasksView() {
                     <TableCell>{t.assignedTo?.name ?? "—"}</TableCell>
                     <TableCell>{t.assignedBy?.name ?? "Self"}</TableCell>
                     <TableCell>
-                      <Badge variant={t.isReviewed ? "default" : "secondary"}>
-                        {t.isReviewed ? "Reviewed" : "Pending"}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <TaskStatusBadge status={normalizeTaskStatus(t.status)} />
+                        {t.isReviewed ? <Badge>Reviewed</Badge> : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

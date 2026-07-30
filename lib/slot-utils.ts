@@ -18,3 +18,11 @@ export function getNextFreeSlot(
   }
   return null;
 }
+
+/** Earliest bookable slot of the day that is not occupied. */
+export function getFirstFreeSlot(
+  occupiedStartTimes: Iterable<string>,
+): { start: string; end: string } | null {
+  const occupied = occupiedStartTimes instanceof Set ? occupiedStartTimes : new Set(occupiedStartTimes);
+  return TIME_SLOTS.find((slot) => !occupied.has(slot.start)) ?? null;
+}

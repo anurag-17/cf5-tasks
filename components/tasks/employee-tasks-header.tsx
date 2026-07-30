@@ -1,0 +1,51 @@
+"use client";
+
+import { CalendarIcon, PlusIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+
+function formatDisplayDate(yyyyMmDd: string) {
+  const [year, month, day] = yyyyMmDd.split("-").map(Number);
+  if (!year || !month || !day) return yyyyMmDd;
+  return format(new Date(year, month - 1, day), "EEEE, d MMMM yyyy");
+}
+
+export function EmployeeTasksHeader({
+  selectedDate,
+  onDateChange,
+  onAddTask,
+  addDisabled,
+}: {
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+  onAddTask: () => void;
+  addDisabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">My Tasks</h1>
+        <label
+          htmlFor="employee-schedule-date"
+          className="border-input bg-card hover:bg-muted/40 focus-within:ring-ring relative inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-sm shadow-xs focus-within:ring-2"
+        >
+          <CalendarIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+          <span className="text-foreground">{formatDisplayDate(selectedDate)}</span>
+          <input
+            id="employee-schedule-date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+            aria-label="Select date"
+          />
+        </label>
+      </div>
+
+      <Button size="lg" onClick={onAddTask} disabled={addDisabled} className="shrink-0 self-start">
+        <PlusIcon data-icon="inline-start" />
+        Add Task
+      </Button>
+    </div>
+  );
+}

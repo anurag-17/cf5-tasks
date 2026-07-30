@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TASK_START_TIMES, TASK_END_TIMES, TIME_SLOTS } from "@/lib/constants/office-hours";
-import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
+import {
+  TASK_DESCRIPTION_MIN_WORDS,
+  TASK_DESCRIPTION_MAX_WORDS,
+  TASK_STATUSES,
+} from "@/lib/constants/task";
 import { countWords } from "@/lib/word-count";
 
 export const taskSchema = z
@@ -81,6 +85,7 @@ export const updateEmployeeTaskSchema = z
     startTime: z.enum(TASK_START_TIMES).optional(),
     endTime: z.enum(TASK_END_TIMES).optional(),
     assignedBy: z.string().optional(),
+    status: z.enum(TASK_STATUSES).optional(),
   })
   .refine(
     (data) => {

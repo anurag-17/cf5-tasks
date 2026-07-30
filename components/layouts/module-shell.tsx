@@ -116,6 +116,7 @@ export function ModuleShell({
             <SidebarMenuItem>
               <SidebarMenuButton
                 tooltip="Sign out"
+                className="cursor-pointer"
                 onClick={() => signOut({ callbackUrl: "/login" })}
               >
                 <LogOutIcon aria-hidden />
