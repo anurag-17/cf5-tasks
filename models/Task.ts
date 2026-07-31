@@ -40,7 +40,7 @@ const TaskSchema = new Schema<ITask>(
     // dashboard's per-slot cell (e.g. "Login API").
     title: { type: String, required: true, trim: true, maxlength: 150 },
 
-    // "Description" — free text, required, validated to the 200–400 word
+    // "Description" — free text, required, validated to the 200–1000 word
     // window from requirement.txt. Mongoose's built-in minlength/maxlength
     // count *characters*, not words, so this needs a custom `validate`
     // instead; it shares `countWords` with the Zod form schema so both

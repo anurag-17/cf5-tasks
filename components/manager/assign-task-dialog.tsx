@@ -227,7 +227,7 @@ export function AssignTaskDialog({
             <Label htmlFor="assign-desc">Description</Label>
             <Textarea
               id="assign-desc"
-              placeholder="Describe the task (200–400 words)…"
+              placeholder={`Describe the task (${TASK_DESCRIPTION_MIN_WORDS}–${TASK_DESCRIPTION_MAX_WORDS} words)…`}
               className="min-h-32"
               {...register("description")}
               aria-invalid={!!errors.description}

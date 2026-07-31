@@ -1,6 +1,6 @@
-// requirement.txt "Description Validation": minimum 200 words, maximum 400 words.
+// Description Validation: minimum 200 words, maximum 1000 words.
 export const TASK_DESCRIPTION_MIN_WORDS = 200;
-export const TASK_DESCRIPTION_MAX_WORDS = 400;
+export const TASK_DESCRIPTION_MAX_WORDS = 1000;
 
 /** Employee work progress — separate from Admin/PM `isReviewed` lock. */
 export const TASK_STATUSES = ["pending", "in_progress", "completed"] as const;
