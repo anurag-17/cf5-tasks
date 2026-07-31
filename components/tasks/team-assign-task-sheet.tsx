@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -40,6 +40,11 @@ import {
 } from "@/lib/validations/task";
 import type { EmployeeSlotTask } from "@/components/tasks/employee-slot-row";
 import { taskProjectLabel } from "@/components/tasks/employee-slot-row";
+import {
+  DurationHoursPicker,
+  durationAssignButtonLabel,
+  getDurationAssignPlan,
+} from "@/components/tasks/duration-hours-picker";
 
 /** Form-level schema: date as YYYY-MM-DD for `<input type="date">`. */
 const teamAssignFormSchema = z
@@ -92,6 +97,7 @@ export function TeamAssignTaskSheet({
   slotEnd,
   task,
   copyFrom,
+  occupiedStarts = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -102,8 +108,10 @@ export function TeamAssignTaskSheet({
   slotEnd?: string;
   task?: EmployeeSlotTask | null;
   copyFrom?: { projectName?: string; title: string; description: string } | null;
+  occupiedStarts?: string[];
 }) {
   const isEdit = !!task;
+  const [durationHours, setDurationHours] = useState(1);
   const assignTask = useAssignTask();
   const editTask = useEditAssignedTask();
 
@@ -129,6 +137,7 @@ export function TeamAssignTaskSheet({
 
   useEffect(() => {
     if (!open) return;
+    setDurationHours(1);
 
     if (task) {
       reset({
@@ -157,6 +166,7 @@ export function TeamAssignTaskSheet({
   const description = watch("description") ?? "";
   const wordCount = countWords(description);
   const startTime = watch("startTime");
+  const durationPlan = getDurationAssignPlan(startTime, durationHours, occupiedStarts);
 
   const handleSlotChange = (start: string) => {
     const slot = TIME_SLOTS.find((s) => s.start === start);
@@ -187,15 +197,33 @@ export function TeamAssignTaskSheet({
         await editTask.mutateAsync({ id: task._id, data: parsed });
         toast.success("Task updated.");
       } else {
-        const parsed: TeamAssignTaskInput = teamAssignTaskSchema.parse(payloadBase);
+        if (durationPlan && !durationPlan.canAssign) {
+          toast.error(
+            durationPlan.insufficientRemaining
+              ? "Not enough slots remain from this start."
+              : "Selected duration overlaps an occupied slot.",
+          );
+          return;
+        }
+        const parsed: TeamAssignTaskInput = teamAssignTaskSchema.parse({
+          ...payloadBase,
+          durationHours,
+        });
         await assignTask.mutateAsync(parsed);
-        toast.success("Task assigned.");
+        toast.success(
+          durationHours === 1
+            ? "Task assigned."
+            : `Assigned ${durationHours} hours successfully.`,
+        );
       }
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
     }
   };
+
+  const assignDisabled =
+    isSubmitting || (!isEdit && !!durationPlan && !durationPlan.canAssign);
 
   return (
     <Sheet
@@ -345,11 +373,24 @@ export function TeamAssignTaskSheet({
                 ) : null}
               </div>
             </div>
+
+            {!isEdit ? (
+              <DurationHoursPicker
+                startTime={startTime}
+                durationHours={durationHours}
+                onChange={setDurationHours}
+                occupiedStarts={occupiedStarts}
+              />
+            ) : null}
           </div>
 
           <div className="bg-card flex justify-end gap-2 border-t px-4 py-3">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : isEdit ? "Update" : "Assign"}
+            <Button type="submit" disabled={assignDisabled}>
+              {isSubmitting
+                ? "Saving…"
+                : isEdit
+                  ? "Update"
+                  : durationAssignButtonLabel(durationHours, durationPlan?.canAssign ?? true)}
             </Button>
           </div>
         </form>

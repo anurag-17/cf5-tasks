@@ -326,6 +326,7 @@ export function ManagedEmployeeTasksPanel({
         slotEnd={selectedSlot?.end}
         task={editTask}
         copyFrom={copyFrom}
+        occupiedStarts={tasks.map((t) => t.startTime)}
       />
 
       <ConfirmDeleteDialog

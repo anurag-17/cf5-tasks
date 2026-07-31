@@ -4,12 +4,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TaskStatus } from "@/lib/constants/task";
 import type {
   TaskInput,
+  TaskCreateInput,
   TeamAssignTaskInput,
   TeamAssignTaskUpdateInput,
 } from "@/lib/validations/task";
 import { fetchJSON } from "@/lib/api/fetch-json";
 
-export type ManagerTaskWriteInput = TaskInput | TeamAssignTaskInput;
+export type ManagerTaskWriteInput = TaskCreateInput | TeamAssignTaskInput;
 export type ManagerTaskUpdateInput =
   | (TaskInput & { status?: TaskStatus })
   | TeamAssignTaskUpdateInput;

@@ -27,23 +27,47 @@ import { createUserSchema, updateUserSchema } from "@/lib/validations/user";
 import type { CreateUserInput, UpdateUserInput } from "@/lib/validations/user";
 import { useCreateUser, useUpdateUser } from "@/hooks/use-users";
 import { ROLE_LABELS } from "@/lib/constants/roles";
+import {
+  EMPLOYEE_ROLES,
+  EMPLOYEE_ROLE_LABELS,
+  type EmployeeRole,
+} from "@/lib/constants/employee-roles";
+import {
+  USERS_PAGE_ALLOWED_ROLES,
+  defaultCreatableRole,
+  type CreatableAuthRole,
+  type UsersPageMode,
+} from "@/components/users/users-page-mode";
 
 interface UserForEdit {
   _id: string;
   name: string;
   email: string;
   role: string;
+  employeeRole?: string | null;
 }
 
 interface UserFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user?: UserForEdit | null;
+  /** Admin can pick Employee + PM; Manager only Employee. */
+  mode?: UsersPageMode;
 }
 
-export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
+type FormValues = CreateUserInput | UpdateUserInput;
+
+export function UserFormDialog({
+  open,
+  onOpenChange,
+  user,
+  mode = "admin",
+}: UserFormDialogProps) {
   const isEdit = !!user;
   const [showPassword, setShowPassword] = useState(false);
+  const [employeeRole, setEmployeeRole] = useState<EmployeeRole | "">("");
+  const allowedRoles = USERS_PAGE_ALLOWED_ROLES[mode];
+  const roleSelectLocked = allowedRoles.length === 1;
 
   const {
     register,
@@ -52,9 +76,16 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<CreateUserInput | UpdateUserInput>({
-    resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema),
-    defaultValues: { name: "", email: "", password: "", role: "employee" },
+  } = useForm<FormValues>({
+    // Create vs update schemas differ slightly; cast keeps RHF happy when swapping.
+    resolver: zodResolver(isEdit ? updateUserSchema : createUserSchema) as never,
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: defaultCreatableRole(mode),
+      employeeRole: "",
+    },
   });
 
   const createUser = useCreateUser();
@@ -62,22 +93,66 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
   useEffect(() => {
     if (user) {
-      reset({ name: user.name, email: user.email, role: user.role as "employee" | "project_manager", password: "" });
+      const role = (
+        allowedRoles.includes(user.role as CreatableAuthRole)
+          ? user.role
+          : defaultCreatableRole(mode)
+      ) as CreatableAuthRole;
+      const nextEmployeeRole = (user.employeeRole as EmployeeRole | undefined) ?? "";
+      setEmployeeRole(nextEmployeeRole);
+      reset({
+        name: user.name,
+        email: user.email,
+        role,
+        password: "",
+        employeeRole: nextEmployeeRole,
+      });
     } else {
-      reset({ name: "", email: "", password: "", role: "employee" });
+      setEmployeeRole("");
+      reset({
+        name: "",
+        email: "",
+        password: "",
+        role: defaultCreatableRole(mode),
+        employeeRole: "",
+      });
     }
     setShowPassword(false);
-  }, [user, reset, open]);
+  }, [user, reset, open, mode, allowedRoles]);
 
-  const onSubmit = async (data: CreateUserInput | UpdateUserInput) => {
+  const onSubmit = async (data: FormValues) => {
     try {
+      const role = (data.role ?? defaultCreatableRole(mode)) as CreatableAuthRole;
+      if (!allowedRoles.includes(role)) {
+        toast.error(
+          mode === "manager"
+            ? "You can only create employee accounts."
+            : "Invalid role selected.",
+        );
+        return;
+      }
+
+      // Controlled local state is the source of truth for specialty (avoids
+      // RHF + custom Select sync issues that dropped employeeRole on create).
+      const employeeRolePayload = (
+        role === "employee" ? employeeRole : ""
+      ) as CreateUserInput["employeeRole"];
+
       if (isEdit) {
-        const payload: UpdateUserInput = { ...data };
+        const payload: UpdateUserInput = {
+          ...data,
+          role,
+          employeeRole: employeeRolePayload,
+        };
         if (!payload.password) delete payload.password;
         await updateUser.mutateAsync({ id: user._id, data: payload });
         toast.success("User updated successfully.");
       } else {
-        await createUser.mutateAsync(data as CreateUserInput);
+        await createUser.mutateAsync({
+          ...(data as CreateUserInput),
+          role,
+          employeeRole: employeeRolePayload,
+        });
         toast.success("User created successfully.");
       }
       onOpenChange(false);
@@ -86,7 +161,9 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
     }
   };
 
-  const roleValue = watch("role") ?? "employee";
+  const roleValue =
+    (watch("role") as CreatableAuthRole | undefined) ?? defaultCreatableRole(mode);
+  const showEmployeeRole = roleValue === "employee";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,7 +171,11 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit User" : "Create User"}</DialogTitle>
           <DialogDescription>
-            {isEdit ? "Update the user's details below." : "Fill in the details to create a new user."}
+            {isEdit
+              ? "Update the user's details below."
+              : mode === "manager"
+                ? "Create an employee account for your team."
+                : "Fill in the details to create a new user."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
@@ -106,7 +187,13 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
           <div className="grid gap-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="user@company.com" {...register("email")} aria-invalid={!!errors.email} />
+            <Input
+              id="email"
+              type="email"
+              placeholder="user@company.com"
+              {...register("email")}
+              aria-invalid={!!errors.email}
+            />
             {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
           </div>
 
@@ -141,19 +228,77 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
           <div className="grid gap-1.5">
             <Label>Role</Label>
-            <Select
-              value={roleValue}
-              onValueChange={(val) => setValue("role", val as "employee" | "project_manager")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">{ROLE_LABELS.employee}</SelectItem>
-                <SelectItem value="project_manager">{ROLE_LABELS.project_manager}</SelectItem>
-              </SelectContent>
-            </Select>
+            {roleSelectLocked ? (
+              <Input
+                value={ROLE_LABELS[allowedRoles[0]!]}
+                readOnly
+                disabled
+                aria-label="Role (locked)"
+              />
+            ) : (
+              <Select
+                value={roleValue}
+                onValueChange={(val) => {
+                  const next = (val ?? "employee") as CreatableAuthRole;
+                  if (!allowedRoles.includes(next)) return;
+                  setValue("role", next, { shouldValidate: true });
+                  if (next !== "employee") {
+                    setEmployeeRole("");
+                    setValue("employeeRole", "", { shouldValidate: true });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {ROLE_LABELS[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
+
+          {showEmployeeRole ? (
+            <div className="grid gap-1.5">
+              <Label>Employee role</Label>
+              <Select
+                value={employeeRole || "__none__"}
+                onValueChange={(val) => {
+                  const next =
+                    !val || val === "__none__" ? ("" as const) : (val as EmployeeRole);
+                  setEmployeeRole(next);
+                  setValue("employeeRole", next, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                    shouldTouch: true,
+                  });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select employee role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {EMPLOYEE_ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {EMPLOYEE_ROLE_LABELS[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.employeeRole ? (
+                <p className="text-destructive text-xs">{errors.employeeRole.message}</p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Job specialty shown on the users table and schedule grouping.
+                </p>
+              )}
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>

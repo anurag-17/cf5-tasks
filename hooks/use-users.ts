@@ -16,6 +16,7 @@ interface UserData {
   name: string;
   email: string;
   role: string;
+  employeeRole?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

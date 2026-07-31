@@ -10,7 +10,7 @@ const ROLE_PERMISSIONS = {
     viewAllTasks: true,
   },
   project_manager: {
-    manageUsers: false,
+    manageUsers: true,
     manageProjects: true,
     assignTasks: true,
     viewAllTasks: true,

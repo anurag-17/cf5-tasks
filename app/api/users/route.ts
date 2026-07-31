@@ -4,8 +4,13 @@ import { connectDB } from "@/lib/db/mongoose";
 import { requireApiPermission } from "@/lib/api-auth";
 import { handleApiError } from "@/lib/api/handle-api-error";
 import { escapeRegex } from "@/lib/escape-regex";
+import {
+  canAssignAuthRole,
+  employeeOnlyForbiddenResponse,
+  isEmployeeOnlyUserManager,
+} from "@/lib/user-management-scope";
 import { User } from "@/models";
-import { createUserSchema, usersQuerySchema } from "@/lib/validations/user";
+import { createUserSchema, usersQuerySchema, normalizeEmployeeRole } from "@/lib/validations/user";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,9 +20,16 @@ export async function GET(req: NextRequest) {
 
     const params = Object.fromEntries(req.nextUrl.searchParams);
     const query = usersQuerySchema.parse(params);
+    const employeeOnly = isEmployeeOnlyUserManager(auth.user.role);
 
     const filter: Record<string, unknown> = {};
-    if (query.role !== "all") filter.role = query.role;
+    if (employeeOnly) {
+      // Managers only see employees, regardless of ?role=.
+      filter.role = "employee";
+    } else if (query.role !== "all") {
+      filter.role = query.role;
+    }
+
     if (query.search) {
       const regex = { $regex: escapeRegex(query.search), $options: "i" };
       filter.$or = [{ name: regex }, { email: regex }];
@@ -50,6 +62,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = createUserSchema.parse(body);
 
+    if (!canAssignAuthRole(auth.user.role, parsed.role)) {
+      return employeeOnlyForbiddenResponse(
+        "You can only create employee accounts.",
+      );
+    }
+
     const existing = await User.findOne({ email: parsed.email.toLowerCase() });
     if (existing) {
       return NextResponse.json(
@@ -59,7 +77,16 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(parsed.password, 10);
-    const user = await User.create({ ...parsed, password: hashedPassword });
+    const employeeRole =
+      parsed.role === "employee" ? normalizeEmployeeRole(parsed.employeeRole) : undefined;
+
+    const user = await User.create({
+      name: parsed.name,
+      email: parsed.email,
+      password: hashedPassword,
+      role: parsed.role,
+      ...(employeeRole ? { employeeRole } : {}),
+    });
 
     const safeUser = { ...(user.toObject() as unknown as Record<string, unknown>) };
     delete safeUser.password;

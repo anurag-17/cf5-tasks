@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { z } from "zod";
-import { taskSchema } from "@/lib/validations/task";
+import { taskCreateSchema, taskSchema } from "@/lib/validations/task";
 import type { TaskInput } from "@/lib/validations/task";
 import { useAssignTask, useEditAssignedTask, useEmployees } from "@/hooks/use-manager";
 import { useProjects } from "@/hooks/use-projects";
@@ -32,6 +32,11 @@ import { TIME_SLOTS } from "@/lib/constants/office-hours";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
 import { formatTime12h } from "@/lib/format";
+import {
+  DurationHoursPicker,
+  durationAssignButtonLabel,
+  getDurationAssignPlan,
+} from "@/components/tasks/duration-hours-picker";
 
 interface TaskForEdit {
   _id: string;
@@ -52,6 +57,8 @@ interface AssignTaskDialogProps {
   date?: string;
   slotStart?: string;
   slotEnd?: string;
+  /** Other occupied start times for this employee/day (client-side duration preview). */
+  occupiedStarts?: string[];
   copyFrom?: {
     project: { _id: string; name: string };
     title: string;
@@ -67,10 +74,12 @@ export function AssignTaskDialog({
   date,
   slotStart,
   slotEnd,
+  occupiedStarts = [],
   copyFrom,
 }: AssignTaskDialogProps) {
   const isEdit = !!task;
   const lockContext = !isEdit && !!employeeId && !!slotStart;
+  const [durationHours, setDurationHours] = useState(1);
 
   const { data: employeesData } = useEmployees();
   const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
@@ -93,6 +102,9 @@ export function AssignTaskDialog({
   const editTask = useEditAssignedTask();
 
   useEffect(() => {
+    if (!open) return;
+    setDurationHours(1);
+
     if (task) {
       reset({
         project: task.project._id,
@@ -114,23 +126,7 @@ export function AssignTaskDialog({
         assignedTo: employeeId ?? "",
       });
     }
-  }, [task, date, slotStart, slotEnd, employeeId, copyFrom, reset]);
-
-  const onSubmit = async (values: TaskFormValues) => {
-    try {
-      const data = taskSchema.parse(values);
-      if (isEdit) {
-        await editTask.mutateAsync({ id: task._id, data });
-        toast.success("Task updated.");
-      } else {
-        await assignTask.mutateAsync(data);
-        toast.success("Task assigned successfully.");
-      }
-      onOpenChange(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
-    }
-  };
+  }, [open, task, date, slotStart, slotEnd, employeeId, copyFrom, reset]);
 
   const description = watch("description") ?? "";
   const wordCount = countWords(description);
@@ -138,6 +134,7 @@ export function AssignTaskDialog({
   const assignedTo = watch("assignedTo");
   const lockedEmployee = employees.find((e) => e._id === assignedTo);
   const lockedSlot = TIME_SLOTS.find((s) => s.start === startTime);
+  const durationPlan = getDurationAssignPlan(startTime, durationHours, occupiedStarts);
 
   const handleSlotChange = (start: string) => {
     const slot = TIME_SLOTS.find((s) => s.start === start);
@@ -146,6 +143,38 @@ export function AssignTaskDialog({
       setValue("endTime", slot.end as TaskInput["endTime"]);
     }
   };
+
+  const onSubmit = async (values: TaskFormValues) => {
+    try {
+      if (isEdit) {
+        const data = taskSchema.parse(values);
+        await editTask.mutateAsync({ id: task._id, data });
+        toast.success("Task updated.");
+      } else {
+        if (durationPlan && !durationPlan.canAssign) {
+          toast.error(
+            durationPlan.insufficientRemaining
+              ? "Not enough slots remain from this start."
+              : "Selected duration overlaps an occupied slot.",
+          );
+          return;
+        }
+        const data = taskCreateSchema.parse({ ...values, durationHours });
+        await assignTask.mutateAsync(data);
+        toast.success(
+          durationHours === 1
+            ? "Task assigned successfully."
+            : `Assigned ${durationHours} hours successfully.`,
+        );
+      }
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+    }
+  };
+
+  const assignDisabled =
+    isSubmitting || (!isEdit && !!durationPlan && !durationPlan.canAssign);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -292,9 +321,22 @@ export function AssignTaskDialog({
             </div>
           </div>
 
+          {!isEdit ? (
+            <DurationHoursPicker
+              startTime={startTime}
+              durationHours={durationHours}
+              onChange={setDurationHours}
+              occupiedStarts={occupiedStarts}
+            />
+          ) : null}
+
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : isEdit ? "Update" : "Assign"}
+            <Button type="submit" disabled={assignDisabled}>
+              {isSubmitting
+                ? "Saving…"
+                : isEdit
+                  ? "Update"
+                  : durationAssignButtonLabel(durationHours, durationPlan?.canAssign ?? true)}
             </Button>
           </DialogFooter>
         </form>

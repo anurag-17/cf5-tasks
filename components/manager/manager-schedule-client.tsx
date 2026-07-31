@@ -111,15 +111,18 @@ function EmployeeNameButton({
 }
 
 function TaskChip({ task, onClick }: { task: ManagerScheduleSlot; onClick: () => void }) {
+  const primaryLabel =
+    task.project.trim() && task.project !== "—" ? task.project : task.title;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="w-full max-w-[140px] cursor-pointer space-y-1 text-left transition-colors hover:underline"
-      title={`${task.project} · Assigned by ${task.assignedBy}`}
-      aria-label={`View task for project: ${task.project}`}
+      title={`${primaryLabel} · Assigned by ${task.assignedBy}`}
+      aria-label={`View task: ${primaryLabel}`}
     >
-      <p className="text-primary truncate text-sm leading-snug font-semibold">{task.project}</p>
+      <p className="text-primary truncate text-sm leading-snug font-semibold">{primaryLabel}</p>
       <p className="text-muted-foreground truncate text-xs">{task.assignedBy}</p>
       <StatusDot status={task.status} />
     </button>
@@ -136,6 +139,7 @@ export function ManagerScheduleClient() {
     employeeId: string;
     slotStart: string;
     slotEnd: string;
+    occupiedStarts: string[];
   } | null>(null);
 
   const { data: employeesData } = useEmployees();
@@ -271,6 +275,7 @@ export function ManagerScheduleClient() {
                                   employeeId: row._id,
                                   slotStart: slot.start,
                                   slotEnd: slot.end,
+                                  occupiedStarts: Object.keys(row.slots),
                                 })
                               }
                             />
@@ -375,6 +380,7 @@ export function ManagerScheduleClient() {
                                         employeeId: row._id,
                                         slotStart: slot.start,
                                         slotEnd: slot.end,
+                                        occupiedStarts: Object.keys(row.slots),
                                       })
                                     }
                                   />
@@ -406,6 +412,7 @@ export function ManagerScheduleClient() {
         date={selectedDate}
         slotStart={assignTarget?.slotStart}
         slotEnd={assignTarget?.slotEnd}
+        occupiedStarts={assignTarget?.occupiedStarts}
       />
 
       <ScheduleTaskDetailDialog selection={selectedTask} onSelectionChange={setSelectedTask} />

@@ -1,11 +1,14 @@
 import { Schema, model, models, type Document, type Model } from "mongoose";
 import { ROLES, type Role } from "@/lib/constants/roles";
+import { EMPLOYEE_ROLES, type EmployeeRole } from "@/lib/constants/employee-roles";
 
 export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
   role: Role;
+  /** Job specialty (Shopify, SEO, …). Used for schedule grouping; not auth. */
+  employeeRole?: EmployeeRole;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +43,10 @@ const UserSchema = new Schema<IUser>(
     // by omission.
     role: { type: String, enum: ROLES, required: true, default: "employee" },
 
+    // Job specialty for employees (schedule grouping / filters). Optional;
+    // not used for auth. Cleared when role is not employee.
+    employeeRole: { type: String, enum: EMPLOYEE_ROLES, required: false },
+
     // Lets Admin disable a login ("Manage all users") without deleting the
     // account — Tasks/Projects created by or assigned to this user keep a
     // valid reference either way, which a hard delete would break.
@@ -48,4 +55,13 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true },
 );
 
-export const User: Model<IUser> = models.User ?? model<IUser>("User", UserSchema);
+export const User: Model<IUser> =
+  (models.User as Model<IUser> | undefined) ?? model<IUser>("User", UserSchema);
+
+// Hot-reload / long-lived Next server can keep a cached User model compiled
+// before `employeeRole` existed — strict mode would strip the field on save.
+if (!User.schema.path("employeeRole")) {
+  User.schema.add({
+    employeeRole: { type: String, enum: EMPLOYEE_ROLES, required: false },
+  });
+}
