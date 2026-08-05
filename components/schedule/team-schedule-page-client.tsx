@@ -38,6 +38,7 @@ import { normalizeTaskStatus } from "@/lib/constants/task";
 import {
   EMPLOYEE_ROLES,
   EMPLOYEE_ROLE_LABELS,
+  employeeRoleSectionTone,
 } from "@/lib/constants/employee-roles";
 import { groupScheduleRows, UNGROUPED_SCHEDULE_KEY } from "@/lib/group-schedule-rows";
 
@@ -271,9 +272,14 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
             <div className="space-y-4 md:hidden">
               {sections.map((section) => (
                 <div key={section.key} className="space-y-3">
-                  <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2 text-xs font-semibold tracking-wide uppercase">
+                  <div
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 text-center text-sm font-semibold tracking-wide uppercase",
+                      employeeRoleSectionTone(section.key),
+                    )}
+                  >
                     {section.label}
-                    <span className="ml-2 font-medium normal-case">
+                    <span className="ml-2 text-xs font-medium tracking-normal normal-case opacity-80">
                       {section.rows.length} {section.rows.length === 1 ? "person" : "people"}
                     </span>
                   </div>
@@ -365,13 +371,16 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
                   <tbody>
                     {sections.map((section) => (
                       <Fragment key={section.key}>
-                        <tr className="bg-muted/80">
+                        <tr>
                           <td
                             colSpan={DESKTOP_COL_SPAN}
-                            className="text-muted-foreground sticky left-0 z-[2] px-3 py-2.5 text-xs font-semibold tracking-wide uppercase shadow-[1px_0_0_0_var(--border)]"
+                            className={cn(
+                              "border-y px-3 py-3 text-center text-sm font-semibold tracking-wide uppercase",
+                              employeeRoleSectionTone(section.key),
+                            )}
                           >
                             {section.label}
-                            <span className="ml-2 font-medium normal-case">
+                            <span className="ml-2 text-xs font-medium tracking-normal normal-case opacity-80">
                               {section.rows.length}{" "}
                               {section.rows.length === 1 ? "person" : "people"}
                             </span>
