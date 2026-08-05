@@ -1,10 +1,11 @@
 "use client";
 
-import { LogOutIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { KeyRoundIcon, LogOutIcon } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ChangePasswordDialog } from "@/components/auth/change-password-dialog";
 import { ModuleNavLink } from "@/components/layouts/module-nav-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ export function ModuleShell({
   const displayName = user.name ?? user.email ?? "User";
   const router = useRouter();
   const pathname = usePathname();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     const homePath = roleHomePath(user.role);
@@ -128,6 +130,16 @@ export function ModuleShell({
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
+                tooltip="Change password"
+                className="cursor-pointer"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                <KeyRoundIcon aria-hidden />
+                <span>Change password</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 tooltip="Sign out"
                 className="cursor-pointer"
                 onClick={() => signOut({ callbackUrl: "/login" })}
@@ -173,6 +185,8 @@ export function ModuleShell({
           {children}
         </div>
       </SidebarInset>
+
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </SidebarProvider>
   );
 }

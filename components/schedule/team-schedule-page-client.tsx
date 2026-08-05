@@ -3,7 +3,6 @@
 import { useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarIcon, SearchIcon, UtensilsIcon } from "lucide-react";
-import { useProjects } from "@/hooks/use-projects";
 import {
   useTeamSchedule,
   type TeamScheduleRow,
@@ -139,7 +138,6 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
   const copy = schedulePageCopy(mode);
   const [selectedDate, setSelectedDate] = useState(todayDateInputValue);
   const [employeeSearch, setEmployeeSearch] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
   /** `all` | specialty | `ungrouped` — matches schedule API `employeeRole` query. */
   const [employeeRoleFilter, setEmployeeRoleFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<ScheduleTaskSelection | null>(null);
@@ -150,12 +148,8 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
     occupiedStarts: string[];
   } | null>(null);
 
-  const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
-  const projects = projectsData?.data?.projects ?? [];
-
   const { data, isLoading } = useTeamSchedule(mode, {
     date: selectedDate,
-    project: projectFilter || undefined,
     employeeRole: employeeRoleFilter,
   });
 
@@ -234,23 +228,6 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
               className="pl-8"
             />
           </div>
-          <Select value={projectFilter || null} onValueChange={(v) => setProjectFilter(v ?? "")}>
-            <SelectTrigger className="w-full sm:w-48" aria-label="Filter by project">
-              <SelectValue placeholder="All Projects">
-                {projectFilter
-                  ? (projects.find((p) => p._id === projectFilter)?.name ?? null)
-                  : "All Projects"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Projects</SelectItem>
-              {projects.map((p) => (
-                <SelectItem key={p._id} value={String(p._id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
