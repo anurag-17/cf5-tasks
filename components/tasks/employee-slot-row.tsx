@@ -107,7 +107,7 @@ export function EmployeeSlotRow({
             ) : null}
           </div>
 
-          {!task.isReviewed ? (
+          {!task.isReviewed && (onEdit || onCopy || onDelete) ? (
             <div className="flex shrink-0 items-center gap-1">
               {onCopy ? (
                 <Button
@@ -156,9 +156,7 @@ export function EmployeeSlotRow({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          ) : (
-            <span className="size-7 shrink-0" aria-hidden />
-          )}
+          ) : null}
         </div>
       ) : (
         <div

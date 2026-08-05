@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { useSchedule, useDeleteTask, useUpdateTask } from "@/hooks/use-employee-tasks";
+import { useSchedule, useUpdateTask } from "@/hooks/use-employee-tasks";
 import { TIME_SLOTS, LUNCH_START_TIME, LUNCH_END_TIME } from "@/lib/constants/office-hours";
 import {
   TASK_STATUS_LABELS,
@@ -10,9 +10,8 @@ import {
   type TaskStatus,
 } from "@/lib/constants/task";
 import { todayDateInputValue } from "@/lib/dates";
-import { getFirstFreeSlot, getNextFreeSlot } from "@/lib/slot-utils";
+import { getFirstFreeSlot } from "@/lib/slot-utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { TaskFormDialog } from "./task-form-dialog";
 import { EmployeeTasksHeader } from "./employee-tasks-header";
 import { EmployeeTasksStats } from "./employee-tasks-stats";
@@ -29,17 +28,8 @@ export function SchedulePageClient() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editTask, setEditTask] = useState<EmployeeSlotTask | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
-  const [copyFrom, setCopyFrom] = useState<{
-    project: { _id: string; name: string };
-    title: string;
-    description: string;
-    assignedBy?: { _id: string; name: string };
-  } | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ _id: string; title: string } | null>(null);
 
-  const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
   const { data, isLoading } = useSchedule(selectedDate);
   const tasks = data?.data ?? [];
@@ -52,17 +42,6 @@ export function SchedulePageClient() {
   ).length;
   const completedCount = tasks.filter((t) => normalizeTaskStatus(t.status) === "completed").length;
   const firstFreeSlot = getFirstFreeSlot(tasks.map((t) => t.startTime));
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteTask.mutateAsync(deleteTarget._id);
-      toast.success("Task deleted.");
-      setDeleteTarget(null);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete task.");
-    }
-  };
 
   const handleStatusChange = async (task: EmployeeSlotTask, status: TaskStatus) => {
     setStatusUpdatingId(task._id);
@@ -77,8 +56,6 @@ export function SchedulePageClient() {
   };
 
   const openCreateForSlot = (slot: { start: string; end: string }) => {
-    setEditTask(null);
-    setCopyFrom(null);
     setSelectedSlot(slot);
     setFormOpen(true);
   };
@@ -91,43 +68,9 @@ export function SchedulePageClient() {
     openCreateForSlot(firstFreeSlot);
   };
 
-  const openEdit = (task: EmployeeSlotTask) => {
-    if (!task.project) {
-      toast.error("This task is missing a project and cannot be edited here.");
-      return;
-    }
-    setEditTask(task);
-    setCopyFrom(null);
-    setSelectedSlot(null);
-    setFormOpen(true);
-  };
-
-  const openCopyToNextSlot = (task: EmployeeSlotTask) => {
-    if (!task.project) {
-      toast.error("This task is missing a project and cannot be copied here.");
-      return;
-    }
-    const occupiedStartTimes = tasks.map((t) => t.startTime);
-    const nextSlot = getNextFreeSlot(task.startTime, occupiedStartTimes);
-    if (!nextSlot) {
-      toast.error("No free slot available after this task.");
-      return;
-    }
-    setEditTask(null);
-    setCopyFrom({
-      project: task.project,
-      title: task.title,
-      description: task.description,
-      assignedBy: task.assignedBy,
-    });
-    setSelectedSlot(nextSlot);
-    setFormOpen(true);
-  };
-
   const handleFormOpenChange = (open: boolean) => {
     setFormOpen(open);
     if (!open) {
-      setCopyFrom(null);
       setSelectedSlot(null);
     }
   };
@@ -178,11 +121,6 @@ export function SchedulePageClient() {
                 statusUpdating={task ? statusUpdatingId === task._id : false}
                 onAdd={() => openCreateForSlot(slot)}
                 hideAdd
-                onEdit={task ? () => openEdit(task) : undefined}
-                onCopy={task ? () => openCopyToNextSlot(task) : undefined}
-                onDelete={
-                  task ? () => setDeleteTarget({ _id: task._id, title: task.title }) : undefined
-                }
                 onStatusChange={task ? (status) => handleStatusChange(task, status) : undefined}
               />
             );
@@ -193,40 +131,10 @@ export function SchedulePageClient() {
       <TaskFormDialog
         open={formOpen}
         onOpenChange={handleFormOpenChange}
-        task={
-          editTask?.project
-            ? {
-                _id: editTask._id,
-                project: editTask.project,
-                title: editTask.title,
-                description: editTask.description,
-                date: editTask.date,
-                startTime: editTask.startTime,
-                endTime: editTask.endTime,
-                assignedBy: editTask.assignedBy,
-              }
-            : null
-        }
-        copyFrom={copyFrom}
+        task={null}
         date={selectedDate}
         slotStart={selectedSlot?.start}
         slotEnd={selectedSlot?.end}
-      />
-
-      <ConfirmDeleteDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Task"
-        description={
-          <>
-            Are you sure you want to delete <strong>{deleteTarget?.title}</strong>? This cannot be
-            undone.
-          </>
-        }
-        confirmLabel="Delete"
-        pendingLabel="Deleting…"
-        isPending={deleteTask.isPending}
-        onConfirm={handleDelete}
       />
     </div>
   );
