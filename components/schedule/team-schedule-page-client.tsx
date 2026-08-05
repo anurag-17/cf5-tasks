@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarIcon, UtensilsIcon } from "lucide-react";
-import { useEmployees } from "@/hooks/use-manager";
+import { CalendarIcon, SearchIcon, UtensilsIcon } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
 import {
   useTeamSchedule,
@@ -15,6 +14,7 @@ import { todayDateInputValue } from "@/lib/dates";
 import { formatTime12h } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -138,7 +138,7 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
   const router = useRouter();
   const copy = schedulePageCopy(mode);
   const [selectedDate, setSelectedDate] = useState(todayDateInputValue);
-  const [employeeFilter, setEmployeeFilter] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
   /** `all` | specialty | `ungrouped` — matches schedule API `employeeRole` query. */
   const [employeeRoleFilter, setEmployeeRoleFilter] = useState("all");
@@ -150,20 +150,22 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
     occupiedStarts: string[];
   } | null>(null);
 
-  const { data: employeesData } = useEmployees();
-  const employees = employeesData?.data ?? [];
-
   const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
   const projects = projectsData?.data?.projects ?? [];
 
   const { data, isLoading } = useTeamSchedule(mode, {
     date: selectedDate,
-    employee: employeeFilter || undefined,
     project: projectFilter || undefined,
     employeeRole: employeeRoleFilter,
   });
 
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => {
+    const allRows = data?.data ?? [];
+    const query = employeeSearch.trim().toLowerCase();
+    if (!query) return allRows;
+    return allRows.filter((row) => row.name.toLowerCase().includes(query));
+  }, [data?.data, employeeSearch]);
+
   const sections = groupScheduleRows(rows);
 
   const openEmployeeTasks = (employeeId: string) => {
@@ -218,23 +220,20 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
               <SelectItem value={UNGROUPED_SCHEDULE_KEY}>Ungrouped</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={employeeFilter || null} onValueChange={(v) => setEmployeeFilter(v ?? "")}>
-            <SelectTrigger className="w-full sm:w-48" aria-label="Filter by employee">
-              <SelectValue placeholder="All Employees">
-                {employeeFilter
-                  ? (employees.find((e) => e._id === employeeFilter)?.name ?? null)
-                  : "All Employees"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Employees</SelectItem>
-              {employees.map((e) => (
-                <SelectItem key={e._id} value={e._id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="relative w-full sm:w-48">
+            <SearchIcon
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              value={employeeSearch}
+              onChange={(e) => setEmployeeSearch(e.target.value)}
+              placeholder="Search employee…"
+              aria-label="Search employee by name"
+              className="pl-8"
+            />
+          </div>
           <Select value={projectFilter || null} onValueChange={(v) => setProjectFilter(v ?? "")}>
             <SelectTrigger className="w-full sm:w-48" aria-label="Filter by project">
               <SelectValue placeholder="All Projects">
@@ -266,7 +265,9 @@ export function TeamSchedulePageClient({ mode }: { mode: SchedulePageMode }) {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="text-muted-foreground py-12 text-center">No employees found.</div>
+          <div className="text-muted-foreground py-12 text-center">
+            {employeeSearch.trim() ? "No matching employees." : "No employees found."}
+          </div>
         ) : (
           <>
             <div className="space-y-4 md:hidden">
