@@ -24,14 +24,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { z } from "zod";
-import { taskCreateSchema, taskSchema } from "@/lib/validations/task";
-import type { TaskInput } from "@/lib/validations/task";
+import {
+  teamAssignTaskSchema,
+  teamAssignTaskUpdateSchema,
+  type TeamAssignTaskInput,
+  type TeamAssignTaskUpdateInput,
+} from "@/lib/validations/task";
 import { useAssignTask, useEditAssignedTask, useEmployees } from "@/hooks/use-manager";
-import { useProjects } from "@/hooks/use-projects";
-import { TIME_SLOTS } from "@/lib/constants/office-hours";
+import { TIME_SLOTS, TASK_START_TIMES, TASK_END_TIMES } from "@/lib/constants/office-hours";
 import { countWords } from "@/lib/word-count";
 import { TASK_DESCRIPTION_MIN_WORDS, TASK_DESCRIPTION_MAX_WORDS } from "@/lib/constants/task";
 import { formatTime12h } from "@/lib/format";
+import { isPastDateInputValue, todayDateInputValue } from "@/lib/dates";
 import {
   DurationHoursPicker,
   durationAssignButtonLabel,
@@ -40,13 +44,59 @@ import {
 
 interface TaskForEdit {
   _id: string;
-  project: { _id: string; name: string };
+  project?: { _id: string; name: string } | null;
+  projectName?: string;
   title: string;
   description: string;
   date: string;
   startTime: string;
   endTime: string;
   assignedTo: { _id: string; name: string };
+}
+
+/** Form-level schema: date as YYYY-MM-DD for `<input type="date">`. */
+const assignFormSchema = z
+  .object({
+    projectName: z.string().trim().max(150).optional(),
+    title: z.string().trim().min(3, { error: "Title must be at least 3 characters." }),
+    description: z
+      .string()
+      .trim()
+      .refine(
+        (value) => {
+          const words = countWords(value);
+          return words >= TASK_DESCRIPTION_MIN_WORDS && words <= TASK_DESCRIPTION_MAX_WORDS;
+        },
+        {
+          error: `Description must be between ${TASK_DESCRIPTION_MIN_WORDS} and ${TASK_DESCRIPTION_MAX_WORDS} words.`,
+        },
+      ),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Select a valid date." }),
+    startTime: z.enum(TASK_START_TIMES),
+    endTime: z.enum(TASK_END_TIMES),
+    assignedTo: z.string().min(1, { error: "Select an employee." }),
+  })
+  .refine(
+    (data) => TIME_SLOTS.some((slot) => slot.start === data.startTime && slot.end === data.endTime),
+    { error: "Select a valid hourly slot.", path: ["endTime"] },
+  );
+
+type FormValues = z.input<typeof assignFormSchema>;
+
+function toYyyyMmDd(value: string | Date): string {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return todayDateInputValue();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function editProjectName(task: TaskForEdit): string {
+  return task.projectName?.trim() || task.project?.name?.trim() || "";
 }
 
 interface AssignTaskDialogProps {
@@ -60,7 +110,8 @@ interface AssignTaskDialogProps {
   /** Other occupied start times for this employee/day (client-side duration preview). */
   occupiedStarts?: string[];
   copyFrom?: {
-    project: { _id: string; name: string };
+    projectName?: string;
+    project?: { _id: string; name: string };
     title: string;
     description: string;
   } | null;
@@ -82,11 +133,8 @@ export function AssignTaskDialog({
   const [durationHours, setDurationHours] = useState(1);
 
   const { data: employeesData } = useEmployees();
-  const { data: projectsData } = useProjects({ limit: 100, archived: "false" });
   const employees = employeesData?.data ?? [];
-  const projects = (projectsData?.data?.projects ?? []) as Array<{ _id: string; name: string }>;
 
-  type TaskFormValues = z.input<typeof taskSchema>;
   const {
     register,
     handleSubmit,
@@ -94,8 +142,17 @@ export function AssignTaskDialog({
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
+  } = useForm<FormValues>({
+    resolver: zodResolver(assignFormSchema),
+    defaultValues: {
+      projectName: "",
+      title: "",
+      description: "",
+      date: date ?? todayDateInputValue(),
+      startTime: "09:30",
+      endTime: "10:30",
+      assignedTo: employeeId ?? "",
+    },
   });
 
   const assignTask = useAssignTask();
@@ -107,25 +164,26 @@ export function AssignTaskDialog({
 
     if (task) {
       reset({
-        project: task.project._id,
+        projectName: editProjectName(task),
         title: task.title,
         description: task.description,
-        date: new Date(task.date),
-        startTime: task.startTime as TaskInput["startTime"],
-        endTime: task.endTime as TaskInput["endTime"],
+        date: toYyyyMmDd(task.date),
+        startTime: task.startTime as FormValues["startTime"],
+        endTime: task.endTime as FormValues["endTime"],
         assignedTo: task.assignedTo._id,
       });
-    } else {
-      reset({
-        project: copyFrom?.project._id ?? "",
-        title: copyFrom?.title ?? "",
-        description: copyFrom?.description ?? "",
-        date: date ? new Date(date) : new Date(),
-        startTime: (slotStart ?? "09:30") as TaskInput["startTime"],
-        endTime: (slotEnd ?? "10:30") as TaskInput["endTime"],
-        assignedTo: employeeId ?? "",
-      });
+      return;
     }
+
+    reset({
+      projectName: copyFrom?.projectName?.trim() || copyFrom?.project?.name?.trim() || "",
+      title: copyFrom?.title ?? "",
+      description: copyFrom?.description ?? "",
+      date: date ?? todayDateInputValue(),
+      startTime: (slotStart ?? "09:30") as FormValues["startTime"],
+      endTime: (slotEnd ?? "10:30") as FormValues["endTime"],
+      assignedTo: employeeId ?? "",
+    });
   }, [open, task, date, slotStart, slotEnd, employeeId, copyFrom, reset]);
 
   const description = watch("description") ?? "";
@@ -138,17 +196,31 @@ export function AssignTaskDialog({
 
   const handleSlotChange = (start: string) => {
     const slot = TIME_SLOTS.find((s) => s.start === start);
-    if (slot) {
-      setValue("startTime", slot.start as TaskInput["startTime"]);
-      setValue("endTime", slot.end as TaskInput["endTime"]);
-    }
+    if (!slot) return;
+    setValue("startTime", slot.start as FormValues["startTime"], { shouldValidate: true });
+    setValue("endTime", slot.end as FormValues["endTime"], { shouldValidate: true });
   };
 
-  const onSubmit = async (values: TaskFormValues) => {
+  const onSubmit = async (values: FormValues) => {
     try {
-      if (isEdit) {
-        const data = taskSchema.parse(values);
-        await editTask.mutateAsync({ id: task._id, data });
+      if (!isEdit && isPastDateInputValue(values.date)) {
+        toast.error("Cannot add tasks on a past date.");
+        return;
+      }
+
+      const payloadBase = {
+        projectName: values.projectName?.trim() || undefined,
+        title: values.title,
+        description: values.description,
+        date: new Date(values.date),
+        startTime: values.startTime,
+        endTime: values.endTime,
+        assignedTo: values.assignedTo,
+      };
+
+      if (isEdit && task) {
+        const parsed: TeamAssignTaskUpdateInput = teamAssignTaskUpdateSchema.parse(payloadBase);
+        await editTask.mutateAsync({ id: task._id, data: parsed });
         toast.success("Task updated.");
       } else {
         if (durationPlan && !durationPlan.canAssign) {
@@ -159,8 +231,11 @@ export function AssignTaskDialog({
           );
           return;
         }
-        const data = taskCreateSchema.parse({ ...values, durationHours });
-        await assignTask.mutateAsync(data);
+        const parsed: TeamAssignTaskInput = teamAssignTaskSchema.parse({
+          ...payloadBase,
+          durationHours,
+        });
+        await assignTask.mutateAsync(parsed);
         toast.success(
           durationHours === 1
             ? "Task assigned successfully."
@@ -198,7 +273,7 @@ export function AssignTaskDialog({
             ) : (
               <Select
                 value={assignedTo || null}
-                onValueChange={(v) => setValue("assignedTo", v ?? "")}
+                onValueChange={(v) => setValue("assignedTo", v ?? "", { shouldValidate: true })}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select employee">
@@ -220,25 +295,18 @@ export function AssignTaskDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Project</Label>
-            <Select
-              value={watch("project") || null}
-              onValueChange={(v) => setValue("project", v ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select project">
-                  {projects.find((p) => p._id === watch("project"))?.name ?? null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p._id} value={String(p._id)}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.project && <p className="text-destructive text-xs">{errors.project.message}</p>}
+            <Label htmlFor="assign-project-name">Project name</Label>
+            <Input
+              id="assign-project-name"
+              placeholder="Optional"
+              {...register("projectName")}
+              aria-invalid={!!errors.projectName}
+            />
+            {errors.projectName ? (
+              <p className="text-destructive text-xs">{errors.projectName.message}</p>
+            ) : (
+              <p className="text-muted-foreground text-xs">Optional — free text, not required to save.</p>
+            )}
           </div>
 
           <div className="grid gap-1.5">
@@ -280,7 +348,8 @@ export function AssignTaskDialog({
                 <Input
                   id="assign-date"
                   type="date"
-                  {...register("date", { valueAsDate: true })}
+                  min={isEdit ? undefined : todayDateInputValue()}
+                  {...register("date")}
                   aria-invalid={!!errors.date}
                 />
                 {errors.date && <p className="text-destructive text-xs">{errors.date.message}</p>}
@@ -304,14 +373,16 @@ export function AssignTaskDialog({
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select slot">
                       {TIME_SLOTS.find((s) => s.start === startTime)
-                        ? `${startTime} – ${TIME_SLOTS.find((s) => s.start === startTime)?.end}`
+                        ? `${formatTime12h(startTime)} – ${formatTime12h(
+                            TIME_SLOTS.find((s) => s.start === startTime)!.end,
+                          )}`
                         : null}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {TIME_SLOTS.map((slot) => (
                       <SelectItem key={slot.start} value={slot.start}>
-                        {slot.start} – {slot.end}
+                        {formatTime12h(slot.start)} – {formatTime12h(slot.end)}
                       </SelectItem>
                     ))}
                   </SelectContent>
